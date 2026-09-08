@@ -1,0 +1,2522 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Línea — Mobilidade Corporativa</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&display=swap" />
+<style>
+:root{
+  --bg:#f3eef6; --surface:#ffffff; --surface-2:#faf7fc; --line:#e7dceb;
+  --ink:#241a2b; --ink-2:#6a5e72; --ink-3:#9a8fa2;
+  --brand:#64317B; --brand-2:#8a45a8; --brand-lt:#E8D5F0; --accent:#E05206; --accent-ink:#6E2602; --accent-lt:#FDE3D3;
+  --ok:#22C55E; --ok-bg:#dcfbe6; --warn:#c47f00; --warn-bg:#fbf0d8; --crit:#c0392b; --crit-bg:#fbe6e3;
+  --radius:10px; --shadow:0 1px 2px rgba(60,30,80,.06),0 6px 20px rgba(60,30,80,.07);
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Public Sans",system-ui,Segoe UI,sans-serif;font-size:14px;line-height:1.45}
+h1,h2,h3,.disp{font-family:"Barlow","Public Sans",sans-serif;letter-spacing:.2px;margin:0}
+button{font-family:inherit;cursor:pointer}
+.app{display:flex;flex-direction:column;height:100vh}
+
+/* top bar */
+.topbar{display:flex;align-items:center;gap:22px;padding:0 20px;height:58px;background:var(--brand);color:#fff;box-shadow:var(--shadow);z-index:1000;flex:0 0 auto}
+.logo{display:flex;align-items:center;gap:9px}
+.logo .lin-mark{display:block}
+.logo .linword{font-family:"Barlow";font-weight:800;font-size:22px;letter-spacing:.3px;color:#fff}
+.logo .lintag{font-size:9px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:rgba(255,255,255,.6);margin-left:2px;align-self:center}
+.personas{display:flex;gap:4px;margin-left:8px}
+.persona{background:transparent;border:0;color:#d9c6e4;padding:8px 14px;border-radius:8px;font-weight:600;font-size:13.5px;display:flex;align-items:center;gap:7px}
+.persona:hover{color:#fff;background:rgba(255,255,255,.08)}
+.persona.active{background:#fff;color:var(--brand)}
+.persona .ic{font-size:15px}
+.spacer{flex:1}
+.who{display:flex;align-items:center;gap:9px;font-size:13px;color:#e2d4ea}
+.avatar{width:30px;height:30px;border-radius:50%;background:var(--brand-2);display:grid;place-items:center;font-weight:600;color:#fff}
+.ctx{display:flex;align-items:center;gap:10px}
+.ctx .lbl{font-size:11px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:#d9c6e4}
+.ctx select{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.28);border-radius:8px;padding:7px 30px 7px 12px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%23fff' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 11px center}
+.ctx select:focus{outline:none;border-color:#fff}
+.ctx select option{color:#241a2b}
+.ctx .avatar{background:var(--accent)}
+.ctx .idn{display:flex;align-items:center;gap:9px;font-size:13px;color:#e2d4ea}
+
+.view{flex:1;min-height:0;display:none}
+.view.active{display:flex}
+
+/* ---------- SOLICITANTE (split form + map) ---------- */
+#solic{flex-direction:row}
+.form-pane{width:400px;flex:0 0 auto;background:var(--surface);border-right:1px solid var(--line);display:flex;flex-direction:column;overflow-y:auto}
+.form-pane .head{padding:20px 22px 6px}
+.eyebrow{font-size:11px;font-weight:600;letter-spacing:1.4px;text-transform:uppercase;color:var(--accent-ink);background:var(--accent-lt);display:inline-block;padding:3px 9px;border-radius:20px}
+.form-pane h1{font-size:26px;margin-top:12px;color:var(--brand)}
+.form-pane .sub{color:var(--ink-2);font-size:13px;margin-top:4px}
+.fields{padding:16px 22px;display:flex;flex-direction:column;gap:12px}
+.field{position:relative}
+.field label{position:absolute;top:-7px;left:12px;background:var(--surface);padding:0 5px;font-size:11px;font-weight:600;color:var(--ink-3);letter-spacing:.3px;z-index:2;line-height:1;pointer-events:none}
+.field .ic{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--brand-2);font-size:15px}
+.inp{width:100%;padding:14px 14px 14px 40px;border:1.5px solid var(--line);border-radius:10px;font-size:14.5px;color:var(--ink);background:var(--surface);transition:border-color .15s}
+.inp:focus{outline:none;border-color:var(--brand-2);box-shadow:0 0 0 3px rgba(138,69,168,.18)}
+.inp::placeholder{color:var(--ink-3)}
+.suggest{position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:900;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px rgba(60,30,80,.14);overflow:hidden;max-height:260px;overflow-y:auto}
+.sug-item{display:flex;gap:9px;align-items:flex-start;padding:10px 12px;cursor:pointer;border-bottom:1px solid var(--line)}
+.sug-item:last-child{border-bottom:0}
+.sug-item:hover,.sug-item.hl{background:var(--brand-lt)}
+.sug-item .pin{color:var(--brand-2);font-size:14px;margin-top:1px}
+.sug-item .tx{font-size:13px;line-height:1.3}
+.sug-item .tx b{font-weight:600;color:var(--ink)}
+.sug-item .tx span{color:var(--ink-3);font-size:11.5px}
+.sug-loading,.sug-empty{padding:11px 12px;font-size:12.5px;color:var(--ink-3)}
+#paradasWrap,#passageirosWrap{display:flex;flex-direction:column;gap:12px}
+.addr-row{display:flex;gap:8px;align-items:stretch}
+.addr-main{position:relative;flex:1}
+.num-wrap{position:relative;flex:0 0 130px;width:130px}
+.num-wrap label{position:absolute;top:-7px;left:12px;background:var(--surface);padding:0 5px;font-size:11px;font-weight:600;color:var(--ink-3);letter-spacing:.3px;z-index:2;line-height:1;pointer-events:none;white-space:nowrap}
+.num-wrap .num{width:100%;padding-left:12px}
+.addr-row .parada-rm{position:static;align-self:center;top:auto;right:auto}
+.add-btn{flex:0 0 auto;width:46px;border:1.5px dashed var(--brand-2);background:var(--brand-lt);color:var(--brand);border-radius:10px;font-size:22px;font-weight:700;line-height:1;cursor:pointer;display:grid;place-items:center}
+.add-btn:hover{background:var(--brand);color:#fff;border-style:solid}
+.add-btn:disabled{opacity:.4;cursor:not-allowed}
+.add-btn:disabled:hover{background:var(--brand-lt);color:var(--brand);border-style:dashed}
+/* agenda cooperativa */
+.agenda-wrap{display:flex;gap:16px;align-items:flex-start}
+.ag-side{width:290px;flex:0 0 auto;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);max-height:700px;overflow:auto}
+.ag-side-h{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--ink-3);padding:12px 14px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--surface)}
+.ag-pend{padding:10px 12px;border-bottom:1px solid var(--line);cursor:pointer}
+.ag-pend:hover{background:var(--surface-2)}
+.ag-pend.sel{background:var(--brand-lt);box-shadow:inset 3px 0 0 var(--brand)}
+.ag-pend .t{font-weight:600;font-size:13px}
+.ag-pend .m{font-size:11.5px;color:var(--ink-3)}
+.ag-pend .bd{display:flex;gap:6px;margin-top:5px;flex-wrap:wrap}
+.ag-pend .pill{font-size:10.5px;font-weight:600;padding:2px 7px;border-radius:20px;background:var(--surface-2);border:1px solid var(--line);color:var(--ink-2)}
+.ag-empty{padding:14px;font-size:12.5px;color:var(--ink-3)}
+.ag-cal{flex:1;min-width:0;overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+.ag-cols{display:flex;min-width:max-content}
+.ag-timecol,.ag-col{flex:0 0 auto;border-right:1px solid var(--line)}
+.ag-timecol{width:54px}
+.ag-col{width:158px}
+.ag-col.hot{background:var(--brand-lt)}
+.ag-colh{height:54px;padding:7px 10px;border-bottom:1px solid var(--line);background:var(--surface-2);box-sizing:border-box}
+.ag-colh b{font-size:12.5px;display:block;line-height:1.2}
+.ag-colh span{font-size:11px;color:var(--ink-3)}
+.ag-track{position:relative}
+.ag-hour{height:46px;border-bottom:1px dashed var(--line);box-sizing:border-box}
+.ag-time{height:46px;font-size:10.5px;color:var(--ink-3);text-align:right;padding-right:6px;box-sizing:border-box;border-bottom:1px dashed transparent}
+.ag-block{position:absolute;left:4px;right:4px;background:var(--brand);color:#fff;border-radius:6px;padding:3px 6px;font-size:11px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.3);cursor:default}
+.ag-block b{font-size:11.5px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ag-block .rm{position:absolute;top:2px;right:4px;cursor:pointer;opacity:.85}
+.ag-block.bloq{background:repeating-linear-gradient(45deg,var(--crit),var(--crit) 8px,#a5342a 8px,#a5342a 16px)}
+.ag-lock{float:right;border:0;background:rgba(0,0,0,.06);color:var(--ink-2);cursor:pointer;border-radius:6px;font-size:12px;padding:2px 6px;margin-top:-2px}
+.ag-lock:hover{background:var(--crit);color:#fff}
+.parada-field{position:relative}
+.passageiro-field{position:relative}
+.parada-rm{position:absolute;right:10px;top:12px;border:0;background:none;color:var(--ink-3);cursor:pointer;font-size:14px;line-height:1;padding:6px;border-radius:6px}
+.parada-rm:hover{background:var(--surface-2);color:var(--crit)}
+.mp-pop .mp-t{font-size:12px;font-weight:600;color:var(--ink-2);margin-bottom:8px}
+.mp-pop .mp-btns{display:flex;flex-direction:column;gap:6px}
+.mp-pop .mp-btns button{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 12px;font-size:13px;font-weight:600;color:var(--ink);cursor:pointer;text-align:left;font-family:inherit}
+.mp-pop .mp-btns button:hover{background:var(--brand-lt);border-color:var(--brand-2)}
+.mp-pop .mp-btns button .em{margin-right:7px}
+.inp.invalid{border-color:var(--crit);box-shadow:0 0 0 3px rgba(192,57,43,.12)}
+.fld-err{margin-top:5px;font-size:11.5px;color:var(--crit);font-weight:600}
+.add-stop{color:var(--brand-2);font-weight:600;font-size:13px;background:none;border:0;text-align:right;padding:2px 2px}
+.add-stop:hover{text-decoration:underline}
+.point-row{display:flex;align-items:center;gap:0}
+.timeline{display:flex;flex-direction:column;align-items:center;width:22px;padding-top:4px}
+.dot{width:10px;height:10px;border-radius:50%;border:2.5px solid var(--brand-2)}
+.dot.dest{border:0;background:var(--accent);border-radius:2px;width:10px;height:10px}
+.rail{width:2px;flex:1;background:var(--line);min-height:14px}
+.pts{flex:1;display:flex;flex-direction:column;gap:10px}
+.toggle{display:flex;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:4px;gap:4px}
+.toggle button{flex:1;border:0;background:transparent;padding:9px;border-radius:7px;font-weight:600;color:var(--ink-2);font-size:13.5px}
+.toggle button.on{background:var(--brand);color:#fff}
+.dt-row{display:none;gap:10px}
+.dt-row.show{display:flex}
+.dt-row .field{flex:1}
+.dispo-box{background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.dispo-box .sw{cursor:pointer}
+#dispoRow{display:none}
+#dispoRow.show{display:flex}
+.approvers{background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.approvers .t{font-size:11px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--ink-3);margin-bottom:8px}
+.fld-label{font-size:11px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--ink-3);margin-bottom:6px}
+.cap-hint{font-size:11.5px;margin-top:-4px}
+.appr-empty{font-size:12.5px;padding:4px 0}
+.appr .n.contrato{background:var(--accent)}
+.appr{display:flex;align-items:center;gap:9px;padding:5px 0}
+.appr .n{width:26px;height:26px;border-radius:50%;background:var(--brand-2);color:#fff;display:grid;place-items:center;font-size:11px;font-weight:600}
+.appr .meta{flex:1;line-height:1.25}
+.appr .meta b{font-size:13px;font-weight:600}
+.appr .meta span{font-size:11.5px;color:var(--ink-3)}
+.appr .step{font-size:11px;color:var(--ink-3);font-weight:600}
+.foot{margin-top:auto;padding:16px 22px;border-top:1px solid var(--line);background:var(--surface)}
+.summary{display:flex;justify-content:space-between;font-size:12.5px;color:var(--ink-2);margin-bottom:12px}
+.summary b{color:var(--ink);font-weight:600}
+.cta{width:100%;padding:15px;border:0;border-radius:11px;background:var(--brand);color:#fff;font-weight:700;font-size:15px;font-family:"Barlow";letter-spacing:.5px}
+.cta:hover{background:var(--brand-2)}
+.cta:disabled{background:var(--ink-3);cursor:not-allowed}
+.map-pane{flex:1;position:relative;min-width:0}
+#map{position:absolute;inset:0}
+.map-badge{position:absolute;top:14px;left:14px;z-index:500;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 14px;box-shadow:var(--shadow);display:flex;gap:18px}
+.map-badge .b .k{font-size:10.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--ink-3);font-weight:600}
+.map-badge .b .v{font-family:"Barlow";font-size:19px;font-weight:700;color:var(--brand)}
+.coop-tag{position:absolute;bottom:16px;left:14px;z-index:500;background:var(--brand);color:#fff;border-radius:10px;padding:9px 14px;box-shadow:var(--shadow);font-size:12.5px;display:flex;align-items:center;gap:8px}
+.coop-tag b{font-family:"Barlow";font-size:14px}
+.coop-tag.warn{background:var(--crit)}
+.coop-tag.none{background:var(--accent)}
+.coop-tag.multi{cursor:pointer}
+.coop-tag .caret{margin-left:4px;font-size:11px;opacity:.9}
+.coop-chooser{position:absolute;bottom:58px;left:14px;z-index:600;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 30px rgba(60,30,80,.2);overflow:hidden;min-width:280px}
+.coop-chooser .ch-h{font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--ink-3);padding:10px 14px 6px}
+.ch-item{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;border-top:1px solid var(--line)}
+.ch-item:hover{background:var(--surface-2)}
+.ch-item.sel{background:var(--brand-lt)}
+.ch-item .pr{width:22px;height:22px;border-radius:6px;color:#fff;font-size:11px;font-weight:700;display:grid;place-items:center;flex:0 0 auto}
+.ch-item .nm{flex:1;font-size:13px;font-weight:600;color:var(--ink)}
+.ch-item .nm small{display:block;font-weight:500;color:var(--ink-3);font-size:11px}
+.ch-item .chk{color:var(--brand);font-weight:700}
+.map-loading{position:absolute;inset:0;z-index:800;display:grid;place-items:center;background:rgba(243,238,246,.55);backdrop-filter:blur(2px)}
+.ml-card{display:flex;flex-direction:column;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px 30px;box-shadow:0 10px 30px rgba(60,30,80,.18)}
+.ml-card img{height:26px;width:auto}
+.ml-spin{width:26px;height:26px;border-radius:50%;border:3px solid var(--brand-lt);border-top-color:var(--brand);animation:mlspin .7s linear infinite}
+.ml-txt{font-size:12.5px;font-weight:600;color:var(--brand);letter-spacing:.3px}
+@keyframes mlspin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.ml-spin{animation:none}}
+/* modal */
+.modal-bg{position:fixed;inset:0;z-index:2000;background:rgba(36,20,42,.5);display:grid;place-items:center;padding:20px}
+.modal{background:var(--surface);border-radius:14px;box-shadow:0 20px 60px rgba(36,20,42,.35);width:min(860px,96vw);max-height:92vh;display:flex;flex-direction:column;overflow:hidden}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--line)}
+.modal-head h2{font-size:19px;color:var(--brand)}
+.modal-x{border:0;background:none;font-size:18px;color:var(--ink-3);width:32px;height:32px;border-radius:8px}
+.modal-x:hover{background:var(--surface-2)}
+.modal-body{display:grid;grid-template-columns:1fr 340px;gap:20px;padding:20px;overflow-y:auto}
+.modal-form{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.modal-form .fg.full{grid-column:1/-1}
+.modal-map{display:flex;flex-direction:column;gap:8px}
+#coopMiniMap{flex:1;min-height:280px;border-radius:10px;border:1px solid var(--line)}
+.modal-map .hint{font-size:11.5px;color:var(--ink-3)}
+.row-inline{display:flex;gap:10px;align-items:center}
+.sw{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--ink-2)}
+.modal-foot{display:flex;align-items:center;gap:10px;padding:14px 20px;border-top:1px solid var(--line)}
+.modal-foot .spacer{flex:1}
+.btn.danger{color:var(--crit);border-color:var(--crit)}
+.btn.danger:hover{background:var(--crit-bg)}
+.color-dot{width:14px;height:14px;border-radius:4px;display:inline-block;vertical-align:middle;margin-right:6px;border:1px solid rgba(0,0,0,.15)}
+@media(max-width:720px){.modal-body{grid-template-columns:1fr}.modal-form{grid-template-columns:1fr}#coopMiniMap{min-height:220px}}
+/* toasts */
+.toast-wrap{position:fixed;top:70px;right:18px;z-index:4000;display:flex;flex-direction:column;gap:10px;pointer-events:none}
+.toast{pointer-events:auto;min-width:270px;max-width:380px;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--brand);border-radius:11px;box-shadow:0 12px 30px rgba(60,30,80,.22);padding:12px 14px;display:flex;gap:11px;align-items:flex-start;animation:toastIn .28s cubic-bezier(.2,.8,.2,1)}
+.toast.warn{border-left-color:var(--warn)} .toast.error{border-left-color:var(--crit)} .toast.ok{border-left-color:var(--ok)} .toast.info{border-left-color:var(--brand-2)}
+.toast .ti{font-size:17px;line-height:1.2;flex:0 0 auto}
+.toast .tc{flex:1}
+.toast .tt{font-size:13px;font-weight:700;color:var(--ink);margin-bottom:2px}
+.toast .tm{font-size:12.5px;color:var(--ink-2);line-height:1.4}
+.toast .tx{border:0;background:none;color:var(--ink-3);font-size:15px;cursor:pointer;padding:0 2px;flex:0 0 auto}
+.toast .tacts{display:flex;gap:8px;margin-top:10px}
+.toast .tacts .btn{padding:6px 12px;font-size:12.5px}
+.toast.out{animation:toastOut .25s forwards}
+@keyframes toastIn{from{transform:translateX(24px);opacity:0}to{transform:none;opacity:1}}
+@keyframes toastOut{to{transform:translateX(24px);opacity:0}}
+@media(prefers-reduced-motion:reduce){.toast,.toast.out{animation:none}}
+
+/* ---------- shared page chrome for coop / admin ---------- */
+.page{flex:1;overflow-y:auto;padding:24px 28px;width:100%;min-width:0}
+.page-head{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px}
+.page-head h1{font-size:28px;color:var(--brand)}
+.page-head p{color:var(--ink-2);margin:4px 0 0;font-size:13.5px}
+.stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:22px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow)}
+.stat .k{font-size:11.5px;text-transform:uppercase;letter-spacing:.8px;color:var(--ink-3);font-weight:600}
+.stat .v{font-family:"Barlow";font-size:32px;font-weight:700;color:var(--ink);margin-top:2px}
+.stat .v small{font-size:14px;color:var(--ink-3);font-weight:600}
+.stat.accent{border-left:4px solid var(--accent)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.card-head{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--line)}
+.card-head h2{font-size:17px;color:var(--ink)}
+.filters{display:flex;gap:8px;align-items:center}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:20px;padding:6px 13px;font-size:12.5px;color:var(--ink-2);font-weight:500}
+.chip.on{background:var(--brand);color:#fff;border-color:var(--brand)}
+.tbl-wrap{width:100%;overflow-x:auto}
+table{width:100%;border-collapse:collapse;table-layout:auto}
+th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.7px;color:var(--ink-3);font-weight:600;padding:11px 18px;border-bottom:1px solid var(--line);background:var(--surface-2);white-space:nowrap}
+td{padding:13px 18px;border-bottom:1px solid var(--line);font-size:13.5px;vertical-align:middle}
+td.nowrap,th{white-space:nowrap}
+.pill-coop{white-space:nowrap}
+td b{font-weight:600}
+tr:last-child td{border-bottom:0}
+tr:hover td{background:var(--surface-2)}
+.rota{display:inline-flex;align-items:center;gap:7px;font-weight:600;white-space:nowrap}
+.rota .arw{color:var(--ink-3)}
+.muted{color:var(--ink-3);font-size:12px}
+.badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11.5px;font-weight:600;white-space:nowrap}
+.badge::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.b-wait{color:var(--warn);background:var(--warn-bg)}
+.b-ok{color:var(--ok);background:var(--ok-bg)}
+.b-run{color:var(--brand-2);background:var(--brand-lt)}
+.b-crit{color:var(--crit);background:var(--crit-bg)}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 13px;font-size:12.5px;font-weight:600;color:var(--ink)}
+.btn:hover{background:var(--surface-2)}
+.btn.pri{background:var(--brand);color:#fff;border-color:var(--brand)}
+.btn.pri:hover{background:var(--brand-2)}
+.btn.ok{background:var(--ok);color:#fff;border-color:var(--ok)}
+.btn.sm{padding:5px 10px;font-size:12px}
+td.row-actions{text-align:right;white-space:nowrap;width:1%;vertical-align:middle}
+td.row-actions .btn{white-space:nowrap;vertical-align:middle}
+td.row-actions .btn+.btn{margin-left:6px}
+
+/* admin nav */
+.admin-wrap{display:flex;flex:1;min-height:0;width:100%}
+.side{width:230px;flex:0 0 auto;background:var(--surface);border-right:1px solid var(--line);padding:16px 12px;overflow-y:auto}
+.side .grp{font-size:10.5px;text-transform:uppercase;letter-spacing:1px;color:var(--ink-3);font-weight:600;padding:12px 12px 6px}
+.nav-i{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;color:var(--ink-2);font-weight:500;font-size:13.5px;border:0;background:none;width:100%;text-align:left}
+.nav-i:hover{background:var(--surface-2);color:var(--ink)}
+.nav-i.active{background:var(--brand-lt);color:var(--brand);font-weight:600}
+.nav-i .ic{font-size:15px;width:18px;text-align:center}
+.admin-body{flex:1;overflow-y:auto;padding:24px 28px;min-width:0}
+.admin-panel{display:none}
+.admin-panel.active{display:block}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:720px}
+.fg{display:flex;flex-direction:column;gap:6px}
+.fg.full{grid-column:1/-1}
+.fg label{font-size:12px;font-weight:600;color:var(--ink-2)}
+.fg input,.fg select{padding:10px 12px;border:1.5px solid var(--line);border-radius:9px;font-size:13.5px;font-family:inherit;color:var(--ink);background:var(--surface)}
+.fg input:focus,.fg select:focus{outline:none;border-color:var(--brand-2)}
+.route-map{display:flex;flex-direction:column;gap:10px}
+.route-map .rule{display:grid;grid-template-columns:1fr auto 1.2fr;align-items:center;gap:12px;padding:12px 14px;background:var(--surface-2);border:1px solid var(--line);border-radius:10px}
+.route-map .rule .from{font-weight:600}
+.route-map .rule .to{display:flex;align-items:center;gap:8px}
+.route-map .rule .arw{color:var(--brand-2);font-size:18px;font-weight:700}
+.pill-coop{background:var(--brand);color:#fff;padding:4px 11px;border-radius:20px;font-size:12px;font-weight:600}
+.wf-chain{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.wf-step{display:flex;align-items:center;gap:7px;background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:6px 11px;font-size:12.5px}
+.wf-step .n{width:20px;height:20px;border-radius:50%;background:var(--brand);color:#fff;font-size:11px;display:grid;place-items:center;font-weight:600}
+.wf-arw{color:var(--ink-3)}
+@media(max-width:860px){#solic{flex-direction:column}.form-pane{width:100%;border-right:0;border-bottom:1px solid var(--line);max-height:none}.map-pane{min-height:320px}.side{display:none}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div class="logo">
+      <svg class="lin-mark" viewBox="0 0 44 28" width="42" height="27" aria-label="Línea">
+        <polyline points="4,22 16,14 28,18" fill="none" stroke="#E05206" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="4" cy="22" r="3.4" fill="#E05206"/><circle cx="16" cy="14" r="3.4" fill="#E05206"/>
+        <path d="M34 3c-4.2 0-7.2 3.1-7.2 7.2 0 5.2 7.2 11 7.2 11s7.2-5.8 7.2-11C41.2 6.1 38.2 3 34 3z" fill="#fff"/>
+        <circle cx="34" cy="10.2" r="2.6" fill="#64317B"/>
+      </svg>
+      <span class="linword">Línea</span><span class="lintag">Mobilidade</span></div>
+    <div class="personas">
+      <button class="persona active" data-view="admin"><span class="ic">⚙️</span> Interno</button>
+      <button class="persona" data-view="solic"><span class="ic">📍</span> Solicitar viagem</button>
+      <button class="persona" data-view="coop"><span class="ic">🚐</span> Fornecedor</button>
+    </div>
+    <div class="spacer"></div>
+    <div class="ctx" id="ctxSwitch"></div>
+  </div>
+
+  <!-- ============ SOLICITANTE ============ -->
+  <section class="view" id="solic">
+    <div class="form-pane">
+      <div class="head">
+        <span class="eyebrow">Nova solicitação</span>
+        <h1>Para onde você vai?</h1>
+        <div class="sub">Monte o trajeto no mapa. O fornecedor vem do raio do embarque; a aprovação sobe um nível na hierarquia do viajante.</div>
+      </div>
+      <div class="fields">
+        <div class="field">
+          <label>Passageiro principal (viajante)</label>
+          <div class="addr-row">
+            <div class="addr-main"><span class="ic">👤</span>
+              <select class="inp" id="fViajante">
+                <option value="self" data-terceiro="0" data-nivel="0">Rafael Nunes (você) · empregado</option>
+                <option value="emp2" data-terceiro="0" data-nivel="1">Ana Prado · Gerente Nível 1</option>
+                <option value="emp4" data-terceiro="0" data-nivel="2">Bruno Almeida · Gerente Executivo</option>
+                <option value="emp3" data-terceiro="0" data-nivel="3">Carlos Dias · Diretor</option>
+                <option value="terceiro" data-terceiro="1" data-nivel="0">Terceiro (não empregado)…</option>
+              </select>
+            </div>
+            <button class="add-btn" id="btnAddPassageiro" type="button" title="Adicionar passageiro">+</button>
+          </div>
+        </div>
+        <div class="field" id="fTerceiroWrap" hidden>
+          <label>Nome do terceiro</label>
+          <span class="ic">🪪</span>
+          <input class="inp" id="fTerceiro" placeholder="Nome completo do viajante terceiro">
+        </div>
+        <div id="passageirosWrap"></div>
+        <div class="field">
+          <label>Tipo de veículo</label>
+          <span class="ic">🚗</span>
+          <select class="inp" id="fTipoVeic"></select>
+        </div>
+        <div class="cap-hint muted" id="capHint"></div>
+
+        <div class="pts">
+          <div class="field">
+            <label>Embarque</label>
+            <div class="addr-row">
+              <div class="addr-main"><span class="ic">⦿</span><input class="inp" id="fEmb" autocomplete="off" placeholder="Digite ou clique no mapa"></div>
+              <div class="num-wrap"><label>Nº / Compl.</label><input class="inp num" id="fEmbNum" placeholder="ex.: 123"></div>
+              <button class="add-btn" id="btnAddParada" type="button" title="Adicionar parada">+</button>
+            </div>
+            <div class="suggest" id="sugEmb" hidden></div>
+            <div class="fld-err" id="errEmb" hidden></div>
+          </div>
+          <div id="paradasWrap"></div>
+          <div class="field">
+            <label>Destino</label>
+            <div class="addr-row">
+              <div class="addr-main"><span class="ic">◆</span><input class="inp" id="fDest" autocomplete="off" placeholder="Digite ou clique no mapa"></div>
+              <div class="num-wrap"><label>Nº / Compl.</label><input class="inp num" id="fDestNum" placeholder="ex.: 123"></div>
+            </div>
+            <div class="suggest" id="sugDest" hidden></div>
+            <div class="fld-err" id="errDest" hidden></div>
+          </div>
+        </div>
+
+        <div class="dt-row show">
+          <div class="field"><label>Data da viagem *</label><span class="ic">📅</span><input class="inp" id="fData" type="date"></div>
+          <div class="field"><label>Hora de embarque *</label><span class="ic">🕐</span><input class="inp" id="fHora" type="time"></div>
+        </div>
+
+        <div class="dispo-box">
+          <label class="sw"><input type="checkbox" id="fDispo"> 🚗 Motorista à disposição <span class="muted" style="font-weight:400">(fica no destino por vários dias)</span></label>
+          <div class="dt-row" id="dispoRow" style="margin-top:10px">
+            <div class="field"><label>Retorno (data)</label><span class="ic">📅</span><input class="inp" id="fDispoRetorno" type="date"></div>
+            <div class="field"><label>Dias à disposição</label><span class="ic">📌</span><input class="inp" id="fDispoDias" type="number" min="1" step="1" value="2" style="padding-left:40px"></div>
+          </div>
+          <div class="muted" style="font-size:11.5px;margin-top:2px">Diária, hospedagem, alimentação e horas paradas do motorista entram no fechamento do fornecedor.</div>
+        </div>
+
+        <div class="field">
+          <label>Motivo</label>
+          <span class="ic">🏷</span>
+          <input class="inp" id="fMotivo" placeholder="Ex.: Reunião comercial" value="Reunião comercial">
+        </div>
+        <div class="field">
+          <label>Observação</label>
+          <textarea class="inp" id="fObs" rows="2" style="padding-left:14px;resize:vertical" placeholder="Detalhes da viagem (bagagem, horário de retorno, contato…)"></textarea>
+        </div>
+
+        <div>
+          <div class="fld-label">Forma de pagamento</div>
+          <div class="toggle" id="payToggle">
+            <button class="on" data-pay="empresarial">Empresarial</button>
+            <button data-pay="pessoal">Pessoal</button>
+          </div>
+          <div id="payEmpresarial" style="margin-top:10px">
+            <div class="field">
+              <label>Centro de custo *</label>
+              <span class="ic">🏢</span>
+              <input class="inp" id="fCentroCusto" placeholder="Ex.: CC 4501" value="CC 4501">
+            </div>
+          </div>
+          <div id="payPessoalWrap" hidden style="margin-top:10px">
+            <div class="field">
+              <label>Meio (pessoal)</label>
+              <span class="ic">💳</span>
+              <select class="inp" id="fMeioPessoal">
+                <option value="pix">Pix</option>
+                <option value="credito">Cartão de crédito</option>
+                <option value="debito">Cartão de débito</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="approvers" id="apprBox">
+          <div class="t" id="apprTitle">Workflow de aprovação</div>
+          <div id="apprList"><div class="appr-empty muted">Defina o destino para calcular a distância e a cadeia de aprovação.</div></div>
+        </div>
+      </div>
+      <div class="foot">
+        <div class="summary"><span>Distância <b id="sDist">—</b></span><span>Duração <b id="sDur">—</b></span><span>Fornecedor <b id="sCoop">—</b></span></div>
+        <button class="cta" id="btnReq">Solicitar e enviar para aprovação</button>
+      </div>
+    </div>
+    <div class="map-pane">
+      <div id="map"></div>
+      <div class="map-loading" id="mapLoading" hidden>
+        <div class="ml-card"><img src="logo.png" alt="Aperam"><div class="ml-spin"></div><div class="ml-txt">Localizando…</div></div>
+      </div>
+      <div class="map-badge">
+        <div class="b"><div class="k">Distância</div><div class="v" id="mDist">—</div></div>
+        <div class="b"><div class="k">Tempo estimado</div><div class="v" id="mDur">—</div></div>
+      </div>
+      <div class="coop-chooser" id="coopChooser" hidden></div>
+      <div class="coop-tag" id="coopTag">🚐 Defina o embarque para rotear o fornecedor</div>
+    </div>
+  </section>
+
+  <!-- ============ COOPERATIVA ============ -->
+  <section class="view" id="coop">
+    <div class="page">
+      <div class="page-head">
+        <div><h1 id="coopPanelTitle">Painel RC TRANSPORTES</h1><p id="coopPanelSub">Viagens solicitadas na área de atuação · <b>Timóteo</b></p></div>
+        <div class="filters" id="coopTabs">
+          <button class="chip on" data-ctab="viagens">Viagens</button>
+          <button class="chip" data-ctab="relatorio">💰 Fechamento &amp; faturamento</button>
+          <button class="chip" data-ctab="agenda">Agenda</button>
+          <button class="chip" data-ctab="frota">Veículos &amp; motoristas</button>
+        </div>
+      </div>
+      <div id="coopTabViagens">
+      <div class="stat-row">
+        <div class="stat accent"><div class="k">Aguardando alocação</div><div class="v">7</div></div>
+        <div class="stat"><div class="k">Em curso agora</div><div class="v">3</div></div>
+        <div class="stat"><div class="k">Hoje · concluídas</div><div class="v">12</div></div>
+        <div class="stat"><div class="k">KM previstos hoje</div><div class="v">418<small> km</small></div></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h2>Viagens da localidade</h2><span class="muted">Atualizado há 2 min</span></div>
+        <div class="tbl-wrap"><table>
+          <thead><tr><th>Solicitante</th><th>Trajeto</th><th>Quando</th><th>Dist.</th><th>Status</th><th></th></tr></thead>
+          <tbody>
+            <tr data-pass="2">
+              <td><b>Rafael Nunes</b><br><span class="muted">Estação Timóteo</span></td>
+              <td><div class="rota">Portaria Aperam <span class="arw">→</span> Aeroporto Ipatinga</div><span class="muted">CC 4501 · reunião</span></td>
+              <td>Hoje 14:30</td><td>22 km</td>
+              <td><span class="badge b-ok">Aprovada</span></td>
+              <td class="row-actions"><button class="btn pri sm" type="button" onclick="alocarModal(this)">Alocar veículo</button></td>
+            </tr>
+            <tr data-pass="5">
+              <td><b>Ana Prado</b><br><span class="muted">Estação Timóteo</span></td>
+              <td><div class="rota">Adm. Central <span class="arw">→</span> Cel. Fabriciano</div><span class="muted">CC 2210</span></td>
+              <td>Hoje 16:00</td><td>9 km</td>
+              <td><span class="badge b-ok">Aprovada</span></td>
+              <td class="row-actions"><button class="btn pri sm" type="button" onclick="alocarModal(this)">Alocar veículo</button></td>
+            </tr>
+            <tr>
+              <td><b>Carlos Dias</b><br><span class="muted">Estação Timóteo</span></td>
+              <td><div class="rota">Portaria 2 <span class="arw">→</span> Hospital Márcio Cunha</div><span class="muted">CC 3300 · urgente</span></td>
+              <td>Em curso</td><td>14 km</td>
+              <td><span class="badge b-run">Veículo MG-3F21 · Motorista Pedro</span></td>
+              <td class="row-actions"><button class="btn sm">Acompanhar</button></td>
+            </tr>
+            <tr>
+              <td><b>Juliana Reis</b><br><span class="muted">Estação Timóteo</span></td>
+              <td><div class="rota">Almoxarifado <span class="arw">→</span> Aeroporto Ipatinga</div><span class="muted">CC 4501</span></td>
+              <td>Amanhã 06:15</td><td>24 km</td>
+              <td><span class="badge b-wait">Aguardando aprovação</span></td>
+              <td class="row-actions"><button class="btn sm" disabled>—</button></td>
+            </tr>
+            <tr data-pass="12">
+              <td><b>Marcos Vaz</b><br><span class="muted">Estação Timóteo</span></td>
+              <td><div class="rota">Portaria Principal <span class="arw">→</span> Belo Horizonte</div><span class="muted">CC 1102 · pernoite</span></td>
+              <td>05/set 05:00</td><td>212 km</td>
+              <td><span class="badge b-ok">Aprovada</span></td>
+              <td class="row-actions"><button class="btn pri sm" type="button" onclick="alocarModal(this)">Alocar veículo</button></td>
+            </tr>
+          </tbody>
+        </table></div>
+      </div>
+      </div><!-- /coopTabViagens -->
+
+      <div id="coopTabAgenda" hidden>
+        <div class="page-head" style="margin-top:4px">
+          <div><h2 style="color:var(--brand)">Agenda dos motoristas</h2><p class="muted">Aloque uma solicitação a um motorista com vaga de horário e veículo que comporte os passageiros.</p></div>
+          <div class="filters"><label class="muted" style="align-self:center">Dia</label><input class="inp" id="agData" type="date" style="width:170px"></div>
+        </div>
+        <div class="agenda-wrap">
+          <div class="ag-side">
+            <div class="ag-side-h">Solicitações a alocar</div>
+            <div id="agPendentes"></div>
+          </div>
+          <div class="ag-cal">
+            <div class="ag-cols" id="agCols"></div>
+          </div>
+        </div>
+        <div class="ag-legend muted">Selecione uma solicitação à esquerda e clique na coluna do motorista. Bloqueado se houver conflito de horário ou o veículo não comportar os passageiros.</div>
+      </div>
+
+      <div id="coopTabRelatorio" hidden>
+        <div class="page-head" style="margin-top:4px">
+          <div><h2 style="color:var(--brand)">Fechamento &amp; faturamento</h2><p class="muted">Ao concluir a viagem, o fornecedor lança o <b>realizado</b> (km viagem, km interno, horas paradas, estadia, alimentação). O valor é calculado pelos <b>custos contratados</b> deste fornecedor.</p></div>
+          <div class="filters">
+            <input class="inp" id="relIni" type="date" style="width:150px"><span class="muted" style="align-self:center">até</span>
+            <input class="inp" id="relFim" type="date" style="width:150px"><button class="btn pri" id="btnRelGerar" type="button">Gerar</button>
+          </div>
+        </div>
+        <div class="stat-row">
+          <div class="stat"><div class="k">Viagens</div><div class="v" id="relQtd">—</div></div>
+          <div class="stat"><div class="k">Fechadas</div><div class="v" id="relFech">—</div></div>
+          <div class="stat"><div class="k">KM realizados</div><div class="v" id="relKm">—</div></div>
+          <div class="stat accent"><div class="k">Total a faturar</div><div class="v" id="relTotal">—</div></div>
+        </div>
+        <div class="card"><div class="tbl-wrap"><table>
+          <thead><tr><th>Data</th><th>Solicitante</th><th>Trajeto</th><th>Tipo</th><th>KM (prev./real.)</th><th>Extras</th><th>Valor</th><th></th></tr></thead>
+          <tbody id="relTbody"></tbody>
+        </table></div></div>
+      </div>
+
+      <div id="coopTabFrota" hidden>
+        <div class="page-head" style="margin-top:4px">
+          <div><h2 style="color:var(--brand)">Veículos &amp; motoristas</h2><p class="muted">Cada veículo tem seu motorista. Usados na alocação das viagens aprovadas.</p></div>
+          <button class="btn pri" id="btnNovoVeiculo" type="button">+ Novo veículo</button>
+        </div>
+        <div class="card">
+          <div class="tbl-wrap"><table>
+            <thead><tr><th>Veículo</th><th>Placa</th><th>Tipo</th><th>Cap.</th><th>Motorista</th><th>Telefone</th><th>Status</th><th></th></tr></thead>
+            <tbody id="frotaTbody"></tbody>
+          </table></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ APROVADOR ============ -->
+  <section class="view" id="aprovador">
+    <div class="page">
+      <div class="page-head">
+        <div><h1>Minhas aprovações</h1><p id="aprSub">Viagens aguardando sua decisão · <b>Marina Coelho</b> · Gerente Executivo — Timóteo</p></div>
+        <div class="filters"><button class="chip on">Pendentes</button><button class="chip">Decididas</button></div>
+      </div>
+      <div class="stat-row">
+        <div class="stat accent"><div class="k">Aguardando você</div><div class="v">2</div></div>
+        <div class="stat"><div class="k">Aprovadas · mês</div><div class="v">37</div></div>
+        <div class="stat"><div class="k">Reprovadas · mês</div><div class="v">3</div></div>
+        <div class="stat"><div class="k">Tempo médio</div><div class="v">6<small> h</small></div></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h2>Fila de aprovação</h2><span class="muted">Aprovador único da viagem — clique em <b>Detalhes</b> para ver a corrida completa</span></div>
+        <div class="tbl-wrap"><table>
+          <thead><tr><th>Solicitante</th><th>Trajeto</th><th>Quando</th><th>Dist.</th><th>Fornecedor</th><th>Etapa</th><th></th></tr></thead>
+          <tbody id="aprTbody">
+            <tr data-json='{"solicitante":"Juliana Reis","viajante":"Juliana Reis (empregada · Nível comum)","estacao":"Timóteo","origem":"Almoxarifado — Aperam (Usina), Timóteo/MG","destino":"Aeroporto de Ipatinga (Usiminas/IPN), Santana do Paraíso/MG","paradas":[],"quando":"Amanhã 06:15","dist":"24 km","fornecedor":"RC Transportes","pass":1,"passageiros":["Juliana Reis"],"motivo":"Embarque em voo — reunião regional","obs":"Levar 1 mala. Retorno no mesmo dia à noite.","pagamento":"Empresarial · CC 4501","dispo":false,"progresso":[{"quem":"Você (Gerente Executivo)","st":"pendente"}]}'>
+              <td><b>Juliana Reis</b><br><span class="muted">Timóteo</span></td>
+              <td><div class="rota">Almoxarifado <span class="arw">→</span> Aeroporto Ipatinga</div><span class="muted">CC 4501</span></td>
+              <td>Amanhã 06:15</td><td>24 km</td><td><span class="pill-coop">RC TRANSPORTES</span></td>
+              <td><span class="badge b-wait">Você · único</span></td>
+              <td class="row-actions"><button class="btn sm" type="button" onclick="aprDetalhe(this)">Detalhes</button><button class="btn ok sm" type="button" onclick="aprDecidir(this,true)">Aprovar</button><button class="btn sm" type="button" onclick="aprDecidir(this,false)">Reprovar</button></td>
+            </tr>
+            <tr data-json='{"solicitante":"Marcos Vaz","viajante":"Marcos Vaz (empregado · Nível comum)","estacao":"Timóteo","origem":"Portaria Principal — Aperam (Usina), Timóteo/MG","destino":"Belo Horizonte (Centro), BH/MG","paradas":["Nova Era (Centro) — parada rápida"],"quando":"05/set 05:00","dist":"212 km","fornecedor":"RC Transportes","pass":12,"passageiros":["Marcos Vaz","+11 passageiros (equipe de manutenção)"],"motivo":"Treinamento na capital","obs":"Van 18. Motorista à disposição por 2 dias.","pagamento":"Empresarial · CC 1102","dispo":true,"progresso":[{"quem":"Você (Gerente Executivo)","st":"pendente"}]}'>
+              <td><b>Marcos Vaz</b><br><span class="muted">Timóteo</span></td>
+              <td><div class="rota">Portaria Principal <span class="arw">→</span> Belo Horizonte</div><span class="muted">CC 1102 · 212 km</span></td>
+              <td>05/set 05:00</td><td>212 km</td><td><span class="pill-coop">RC TRANSPORTES</span></td>
+              <td><span class="badge b-wait">Você · único</span></td>
+              <td class="row-actions"><button class="btn sm" type="button" onclick="aprDetalhe(this)">Detalhes</button><button class="btn ok sm" type="button" onclick="aprDecidir(this,true)">Aprovar</button><button class="btn sm" type="button" onclick="aprDecidir(this,false)">Reprovar</button></td>
+            </tr>
+          </tbody>
+        </table></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ MINHAS VIAGENS (perfil Solicitante) ============ -->
+  <section class="view" id="minhasViagens">
+    <div class="page">
+      <div class="page-head">
+        <div><h1>Minhas viagens</h1><p>Acompanhe suas solicitações · <b>Rafael Nunes</b> — Estação Timóteo</p></div>
+        <div class="filters">
+          <button class="chip on">Todas</button>
+          <button class="chip">Aguardando</button>
+          <button class="chip">Aprovadas</button>
+          <button class="chip">Reprovadas</button>
+        </div>
+      </div>
+      <div class="stat-row">
+        <div class="stat accent"><div class="k">Aguardando aprovação</div><div class="v">2</div></div>
+        <div class="stat"><div class="k">Aprovadas</div><div class="v">9</div></div>
+        <div class="stat"><div class="k">Reprovadas</div><div class="v">1</div></div>
+        <div class="stat"><div class="k">Concluídas · mês</div><div class="v">7</div></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h2>Solicitações</h2><span class="muted">Clique numa viagem para ver o andamento da aprovação</span></div>
+        <div class="tbl-wrap"><table>
+          <thead><tr><th>Trajeto</th><th>Quando</th><th>Fornecedor</th><th>Situação</th><th>Andamento da aprovação</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><div class="rota">Portaria Aperam <span class="arw">→</span> Aeroporto Ipatinga</div><span class="muted">CC 4501 · 22 km</span></td>
+              <td>Hoje 14:30</td><td><span class="pill-coop">RC TRANSPORTES</span></td>
+              <td><span class="badge b-wait">Aguardando aprovação</span></td>
+              <td><div class="wf-chain">
+                <span class="wf-step"><span class="n" style="background:var(--warn)">•</span> Marina Coelho · Gerente Executivo · pendente</span>
+              </div></td>
+            </tr>
+            <tr>
+              <td><div class="rota">Almoxarifado <span class="arw">→</span> Belo Horizonte</div><span class="muted">CC 1102 · 212 km</span></td>
+              <td>Amanhã 05:00</td><td><span class="pill-coop">RC TRANSPORTES</span></td>
+              <td><span class="badge b-wait">Aguardando aprovação</span></td>
+              <td><div class="wf-chain">
+                <span class="wf-step"><span class="n" style="background:var(--warn)">•</span> Bruno Almeida · Gerente Executivo</span>
+                <span class="wf-arw">·</span>
+                <span class="muted" style="font-size:12px;color:var(--accent)">delegado a Marina Coelho · pendente</span>
+              </div></td>
+            </tr>
+            <tr>
+              <td><div class="rota">Portaria 2 <span class="arw">→</span> Hospital Márcio Cunha</div><span class="muted">CC 3300 · 14 km</span></td>
+              <td>Ontem 09:10</td><td><span class="pill-coop">RC TRANSPORTES</span></td>
+              <td><span class="badge b-ok">Aprovada</span></td>
+              <td><div class="wf-chain">
+                <span class="wf-step"><span class="n" style="background:var(--ok)">✓</span> Marina Coelho · Gerente Executivo · aprovou</span>
+              </div></td>
+            </tr>
+            <tr>
+              <td><div class="rota">Escritório <span class="arw">→</span> Governador Valadares</div><span class="muted">CC 2210 · 98 km</span></td>
+              <td>28/ago 07:00</td><td><span class="pill-coop">RC TRANSPORTES</span></td>
+              <td><span class="badge b-crit">Reprovada</span></td>
+              <td><div class="wf-chain">
+                <span class="wf-step"><span class="n" style="background:var(--crit)">✕</span> Marina Coelho · Gerente Executivo · reprovou</span>
+                <span class="wf-arw">·</span>
+                <span class="muted" style="font-size:12px">Motivo: “Reunião pode ser por vídeo; sem necessidade de deslocamento.”</span>
+              </div></td>
+            </tr>
+          </tbody>
+        </table></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ADMIN INTERNO ============ -->
+  <section class="view active" id="admin">
+    <div class="admin-wrap">
+      <nav class="side">
+        <div class="grp">Operação</div>
+        <button class="nav-i active" data-panel="pViagens"><span class="ic">🗺</span> Viagens &amp; aprovações</button>
+        <div class="grp">Cadastros</div>
+        <button class="nav-i" data-panel="pCoops"><span class="ic">🚐</span> Fornecedores</button>
+        <button class="nav-i" data-panel="pTiposVeic"><span class="ic">🚗</span> Tipos de veículo</button>
+        <div class="grp">Aprovação</div>
+        <button class="nav-i" data-panel="pRegra"><span class="ic">✔</span> Regra de aprovação</button>
+        <button class="nav-i" data-panel="pDeleg"><span class="ic">🔁</span> Delegações</button>
+        <div class="grp">Financeiro</div>
+        <button class="nav-i" data-panel="pFaturamento"><span class="ic">💰</span> Faturamento por fornecedor</button>
+        <button class="nav-i" data-panel="pPrestacao"><span class="ic">🧾</span> Prestação de contas</button>
+        <div class="grp">Sistema</div>
+        <button class="nav-i" data-panel="pParam"><span class="ic">⚙️</span> Parâmetros &amp; alertas</button>
+        <button class="nav-i" data-panel="pAuditoria"><span class="ic">🕵️</span> Auditoria</button>
+        <button class="nav-i" data-panel="pDados"><span class="ic">💾</span> Dados (backup)</button>
+      </nav>
+      <div class="admin-body">
+        <!-- viagens -->
+        <div class="admin-panel active" id="pViagens">
+          <div class="page-head"><div><h1>Viagens &amp; aprovações</h1><p>Visão interna de todas as solicitações e o estágio do workflow.</p></div><button class="btn pri">Exportar</button></div>
+          <div class="stat-row">
+            <div class="stat accent"><div class="k">Aguardando aprovação</div><div class="v">14</div></div>
+            <div class="stat"><div class="k">Aprovadas · mês</div><div class="v">186</div></div>
+            <div class="stat"><div class="k">Reprovadas · mês</div><div class="v">9</div></div>
+            <div class="stat"><div class="k">Fornecedores ativos</div><div class="v">4</div></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h2>Fila de aprovação</h2><div class="filters"><button class="chip on">Pendentes</button><button class="chip">Todas</button></div></div>
+            <div class="tbl-wrap"><table>
+              <thead><tr><th>Solicitante · estação</th><th>Trajeto</th><th>Fornecedor</th><th>Workflow</th><th></th></tr></thead>
+              <tbody>
+                <tr>
+                  <td><b>Juliana Reis</b><br><span class="muted">Timóteo</span></td>
+                  <td><div class="rota">Almoxarifado <span class="arw">→</span> Aeroporto Ipatinga</div></td>
+                  <td><span class="pill-coop">RC TRANSPORTES</span></td>
+                  <td><div class="wf-chain"><span class="wf-step"><span class="n" style="background:var(--warn)">•</span> Marina Coelho · Gerente Executivo · pendente</span></div></td>
+                  <td class="row-actions"><button class="btn ok sm">Aprovar</button><button class="btn sm">Reprovar</button></td>
+                </tr>
+                <tr>
+                  <td><b>Marcos Vaz</b><br><span class="muted">Timóteo</span></td>
+                  <td><div class="rota">Portaria Principal <span class="arw">→</span> Belo Horizonte</div></td>
+                  <td><span class="pill-coop">RC TRANSPORTES</span></td>
+                  <td><div class="wf-chain"><span class="wf-step"><span class="n" style="background:var(--warn)">•</span> Bruno Almeida</span> <span class="muted" style="color:var(--accent);font-size:12px">→ delegado a Marina Coelho</span></div></td>
+                  <td class="row-actions"><button class="btn ok sm">Aprovar</button><button class="btn sm">Reprovar</button></td>
+                </tr>
+                <tr>
+                  <td><b>Tiago Melo</b><br><span class="muted">Capelinha</span></td>
+                  <td><div class="rota">Escritório <span class="arw">→</span> Governador Valadares</div></td>
+                  <td><span class="pill-coop" style="background:var(--brand-2)">ROYAL</span></td>
+                  <td><div class="wf-chain"><span class="wf-step"><span class="n" style="background:var(--warn)">•</span> Beatriz Lopes · Gerente Executivo · pendente</span></div></td>
+                  <td class="row-actions"><button class="btn ok sm">Aprovar</button><button class="btn sm">Reprovar</button></td>
+                </tr>
+              </tbody>
+            </table></div>
+          </div>
+        </div>
+
+        <!-- cooperativas -->
+        <div class="admin-panel" id="pCoops">
+          <div class="page-head"><div><h1>Fornecedores de transporte</h1><p>Empresas que prestam o serviço. Cada um atende um <b>raio</b> a partir da sua base (ponto de partida) no mapa. Cadastre os <b>custos contratados</b> em “Custos”.</p></div><button class="btn pri" id="btnNovaCoop">+ Novo fornecedor</button></div>
+          <div class="card">
+            <div class="tbl-wrap"><table>
+              <thead><tr><th>Fornecedor</th><th>CNPJ</th><th>Cidade base</th><th>Centro</th><th>Raio</th><th>Prior.</th><th>Status</th><th></th></tr></thead>
+              <tbody id="coopTbody"></tbody>
+            </table></div>
+          </div>
+          <p class="muted" style="margin-top:12px">Alterações são salvas no navegador (localStorage) e refletem no mapa da tela de solicitação. Botão <b>Restaurar</b> volta ao cadastro original do arquivo. <button class="btn sm" id="btnResetCoop" style="margin-left:6px">Restaurar padrão</button></p>
+        </div>
+
+        <!-- regra de aprovação (fixa) -->
+        <div class="admin-panel" id="pRegra">
+          <div class="page-head"><div><h1>Regra de aprovação</h1><p>Um único nível de aprovação, definido pela <b>hierarquia do viajante</b> (via SAP). Não há mais faixa por km.</p></div></div>
+          <div class="card" style="max-width:760px"><div style="padding:20px">
+            <div class="route-map">
+              <div class="rule"><span class="from">Colaborador comum</span><span class="to"><span class="arw">→</span> <span class="pill-coop">Gerente Executivo</span></span></div>
+              <div class="rule"><span class="from">Gerente Nível 1</span><span class="to"><span class="arw">→</span> <span class="pill-coop">Gerente Executivo</span></span></div>
+              <div class="rule"><span class="from">Gerente Executivo (Nível 2)</span><span class="to"><span class="arw">→</span> <span class="pill-coop">Diretor</span></span></div>
+              <div class="rule"><span class="from">Diretor</span><span class="to"><span class="arw">→</span> <span class="muted">sem aprovação (auto-aprovada)</span></span></div>
+            </div>
+            <p class="muted" style="margin-top:16px;max-width:680px">A viagem <b>não segue</b> para o fornecedor sem aprovação (exigência da auditoria) — não há liberação automática. Se o viajante for <b>terceiro</b>, o <b>Gestor do Contrato</b> aprova antes do Gerente Executivo. A pessoa por trás de cada nível vem do SAP; uma <b>delegação manual</b> pode redirecionar a aprovação (ver aba Delegações).</p>
+          </div></div>
+        </div>
+
+        <!-- delegações manuais -->
+        <div class="admin-panel" id="pDeleg">
+          <div class="page-head"><div><h1>Delegações de aprovação</h1><p>Delega a aprovação de uma pessoa para outra por um <b>período</b> (mediante e-mail). É <b>mandatória sobre o SAP</b>: vence a substituição automática de férias.</p></div><button class="btn pri" id="btnNovaDeleg" type="button">+ Nova delegação</button></div>
+          <div class="card">
+            <div class="tbl-wrap"><table>
+              <thead><tr><th>Nível / papel</th><th>De</th><th>Para</th><th>Período</th><th>Motivo</th><th>Status</th><th></th></tr></thead>
+              <tbody id="delegTbody"></tbody>
+            </table></div>
+          </div>
+          <p class="muted" style="margin-top:12px;max-width:720px">A substituição de férias continua vindo do SAP automaticamente. A delegação manual só é usada aqui e <b>tem prioridade</b> quando vigente. Salvo no navegador (localStorage). <button class="btn sm" id="btnResetDeleg" type="button" style="margin-left:6px">Restaurar padrão</button></p>
+        </div>
+
+        <!-- tipos de veículo -->
+        <div class="admin-panel" id="pTiposVeic">
+          <div class="page-head"><div><h1>Tipos de veículo</h1><p>Cada tipo tem uma <b>capacidade</b> de passageiros. O veículo escolhe um tipo, e a capacidade limita os passageiros na solicitação.</p></div><button class="btn pri" id="btnNovoTipoVeic" type="button">+ Novo tipo</button></div>
+          <div class="card">
+            <div class="tbl-wrap"><table>
+              <thead><tr><th>Tipo</th><th>Capacidade (passageiros)</th><th></th></tr></thead>
+              <tbody id="tiposVeicTbody"></tbody>
+            </table></div>
+          </div>
+          <p class="muted" style="margin-top:12px;max-width:720px">O custo não fica aqui: as tarifas (km viagem, km interno, hora parada) são <b>contratadas por fornecedor</b>. Salvo no navegador (localStorage). <button class="btn sm" id="btnResetTiposVeic" type="button" style="margin-left:6px">Restaurar padrão</button></p>
+        </div>
+
+        <!-- faturamento por fornecedor -->
+        <div class="admin-panel" id="pFaturamento">
+          <div class="page-head"><div><h1>Faturamento por fornecedor</h1><p>Quanto será pago a cada fornecedor, <b>discriminado por item</b> (auditável): transporte, horas paradas, diárias, hospedagem e alimentação. Vem do fechamento lançado pelo fornecedor.</p></div>
+            <div class="filters"><input class="inp" id="fatIni" type="date" style="width:150px"><span class="muted" style="align-self:center">até</span><input class="inp" id="fatFim" type="date" style="width:150px"><button class="btn pri" id="btnFatGerar" type="button">Gerar</button></div>
+          </div>
+          <div class="stat-row">
+            <div class="stat"><div class="k">Transporte (km)</div><div class="v" id="fatTransp">—</div></div>
+            <div class="stat"><div class="k">Horas paradas</div><div class="v" id="fatParada">—</div></div>
+            <div class="stat"><div class="k">Diárias</div><div class="v" id="fatDiaria">—</div></div>
+            <div class="stat"><div class="k">Hospedagem</div><div class="v" id="fatHosp">—</div></div>
+            <div class="stat"><div class="k">Alimentação</div><div class="v" id="fatAlim">—</div></div>
+            <div class="stat accent"><div class="k">Total geral</div><div class="v" id="fatTotal">—</div></div>
+          </div>
+          <div class="card"><div class="tbl-wrap"><table>
+            <thead><tr><th>Fornecedor</th><th>Viagens</th><th>KM</th><th>Transporte</th><th>H. paradas</th><th>Diárias</th><th>Hospedagem</th><th>Alimentação</th><th>Total</th></tr></thead>
+            <tbody id="fatTbody"></tbody>
+          </table></div></div>
+          <p class="muted" style="margin-top:12px;max-width:820px">O portal do fornecedor lança o realizado por viagem (km viagem, km interno, horas paradas, estadia, alimentação). Aqui a área <b>audita item a item</b> antes de aprovar a cobrança — dá para conferir por que veio X de trânsito interno ou Y de horas paradas.</p>
+        </div>
+
+        <!-- prestação de contas (viagem a viagem, transparente com o fornecedor) -->
+        <div class="admin-panel" id="pPrestacao">
+          <div class="page-head"><div><h1>Prestação de contas</h1><p>O que o <b>fornecedor lançou</b> em cada viagem finalizada (km, horas paradas, diária, hospedagem, alimentação). O que ele salva no portal aparece aqui — <b>transparente dos dois lados</b>.</p></div>
+            <div class="filters"><select class="inp" id="pcForn" style="width:200px"></select><input class="inp" id="pcIni" type="date" style="width:150px"><span class="muted" style="align-self:center">até</span><input class="inp" id="pcFim" type="date" style="width:150px"><button class="btn pri" id="btnPcGerar" type="button">Gerar</button></div>
+          </div>
+          <div class="stat-row">
+            <div class="stat"><div class="k">Viagens</div><div class="v" id="pcQtd">—</div></div>
+            <div class="stat"><div class="k">Fechadas</div><div class="v" id="pcFech">—</div></div>
+            <div class="stat accent"><div class="k">Pendentes de lançamento</div><div class="v" id="pcPend">—</div></div>
+            <div class="stat"><div class="k">Total lançado</div><div class="v" id="pcTotal">—</div></div>
+          </div>
+          <div class="card"><div class="tbl-wrap"><table>
+            <thead><tr><th>Data</th><th>Fornecedor</th><th>Solicitante</th><th>Trajeto</th><th>Tipo</th><th>KM prev/real</th><th>Status</th><th>Total</th><th></th></tr></thead>
+            <tbody id="pcTbody"></tbody>
+          </table></div></div>
+        </div>
+
+        <!-- dados / backup -->
+        <div class="admin-panel" id="pDados">
+          <div class="page-head"><div><h1>Dados (backup)</h1><p>O protótipo guarda os cadastros no navegador (localStorage) e persiste automaticamente a cada alteração. Aqui você exporta/importa tudo como JSON, no formato do banco (pasta <code>db-json</code>).</p></div></div>
+          <div class="card" style="max-width:820px"><div style="padding:20px">
+            <h4 style="margin:0 0 8px">Exportar</h4>
+            <p class="muted" style="margin:0 0 12px">Baixa um arquivo <b>dados-viagens.json</b> com fornecedores (e custos), tipos de veículo, delegações, veículos/motoristas e agenda. Também baixa os arquivos individuais no formato do banco.</p>
+            <button class="btn pri" id="btnExportar" type="button">⬇ Exportar tudo (JSON)</button>
+            <button class="btn" id="btnExportarDb" type="button" style="margin-left:8px">⬇ Baixar arquivos db-json</button>
+            <hr style="border:0;border-top:1px solid var(--line);margin:20px 0">
+            <h4 style="margin:0 0 8px">Importar</h4>
+            <p class="muted" style="margin:0 0 12px">Carrega um <b>dados-viagens.json</b> exportado antes (substitui os cadastros atuais).</p>
+            <input type="file" id="fileImportar" accept="application/json" style="display:none">
+            <button class="btn" id="btnImportar" type="button">⬆ Importar dados (JSON)</button>
+            <hr style="border:0;border-top:1px solid var(--line);margin:20px 0">
+            <button class="btn danger" id="btnLimparDados" type="button">Limpar dados locais (restaurar padrão)</button>
+          </div></div>
+          <p class="muted" style="margin-top:12px;max-width:820px">Para persistir de verdade em arquivo/servidor, use a <b>migração</b> (backend .NET grava direto nos <code>db-json</code>). No protótipo, exportar/importar cobre o backup entre máquinas.</p>
+        </div>
+
+        <!-- auditoria de dados -->
+        <div class="admin-panel" id="pAuditoria">
+          <div class="page-head"><div><h1>Auditoria de dados</h1><p>Rastreia <b>quem</b> alterou <b>o quê</b> e <b>quando</b>, campo a campo (de → para). Toda alteração de cadastro e fechamento é registrada.</p></div>
+            <div class="filters">
+              <select class="inp" id="audTabela" style="width:170px"><option value="">Todas as tabelas</option></select>
+              <input class="inp" id="audBusca" placeholder="Buscar quem/registro" style="width:200px">
+              <button class="btn" id="btnAudLimpar" type="button">Limpar log</button>
+            </div>
+          </div>
+          <div class="stat-row">
+            <div class="stat"><div class="k">Registros</div><div class="v" id="audQtd">—</div></div>
+            <div class="stat"><div class="k">Inclusões</div><div class="v" id="audIns">—</div></div>
+            <div class="stat"><div class="k">Alterações</div><div class="v" id="audUpd">—</div></div>
+            <div class="stat"><div class="k">Exclusões</div><div class="v" id="audDel">—</div></div>
+          </div>
+          <div class="card"><div class="tbl-wrap"><table>
+            <thead><tr><th>Quando</th><th>Quem</th><th>Tabela</th><th>Op.</th><th>Registro</th><th>Mudanças (de → para)</th></tr></thead>
+            <tbody id="audTbody"></tbody>
+          </table></div></div>
+          <p class="muted" style="margin-top:12px;max-width:820px">No protótipo o log fica no navegador. Em produção é gravado no banco (trigger por tabela, imutável) — proposta em <code>BACK/db/auditoria-proposta.sql</code>. Todas as tabelas são auditadas.</p>
+        </div>
+
+        <!-- parametros + alertas -->
+        <div class="admin-panel" id="pParam">
+          <div class="page-head"><div><h1>Parâmetros &amp; alertas</h1><p>Configurações globais e a política de <b>alerta de aprovação pendente</b>.</p></div></div>
+
+          <div class="card" style="max-width:760px;margin-bottom:18px"><div style="padding:20px">
+            <h4 style="margin:0 0 4px;color:var(--brand)">Alerta de aprovação pendente</h4>
+            <p class="muted" style="margin:0 0 14px;max-width:640px">A viagem <b>não</b> segue para o fornecedor sem aprovação. Quando falta pouco tempo para o embarque, o sistema avisa <b>solicitante e aprovador</b> — repetidamente — até a decisão.</p>
+            <div class="form-grid">
+              <div class="fg"><label>Começar a alertar (horas antes do embarque)</label><input id="pAlertaInicio" type="number" min="1" step="1" value="4"></div>
+              <div class="fg"><label>Repetir alerta a cada (horas)</label><input id="pAlertaIntervalo" type="number" min="1" step="1" value="1"></div>
+            </div>
+            <div id="alertaPreview" style="margin-top:14px"></div>
+            <div style="margin-top:16px"><button class="btn pri" id="btnSalvarAlerta" type="button">Salvar política de alertas</button></div>
+          </div></div>
+
+          <div class="card" style="max-width:760px"><div style="padding:20px">
+            <h4 style="margin:0 0 12px;color:var(--brand)">Integrações</h4>
+            <div class="form-grid">
+              <div class="fg"><label>Provedor de mapa</label><select><option>Leaflet + OpenStreetMap</option><option>Google Maps</option></select></div>
+              <div class="fg"><label>Motor de rota</label><select><option>OSRM público</option><option>Google Directions</option></select></div>
+              <div class="fg full"><label>E-mail de notificação de aprovação</label><input value="logistica-viagens@aperam"></div>
+            </div>
+            <div style="margin-top:18px"><button class="btn pri">Salvar parâmetros</button></div>
+          </div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- Toasts -->
+<div class="toast-wrap" id="toasts"></div>
+
+<!-- Modal indisponibilizar veículo (agenda) -->
+<div class="modal-bg" id="bloqModal" hidden>
+  <div class="modal" style="width:min(460px,96vw)">
+    <div class="modal-head"><h2>Indisponibilizar veículo</h2><button class="modal-x" id="bloqClose">✕</button></div>
+    <div class="modal-body" style="grid-template-columns:1fr"><div class="modal-form">
+      <div class="fg full"><label>Veículo / motorista</label><input id="bqVeic" readonly></div>
+      <div class="fg"><label>Início</label><input id="bqIni" type="time" value="12:00"></div>
+      <div class="fg"><label>Fim</label><input id="bqFim" type="time" value="13:00"></div>
+      <div class="fg full"><label>Motivo</label><input id="bqMotivo" placeholder="Ex.: Manutenção, folga, abastecimento"></div>
+    </div></div>
+    <div class="modal-foot"><span class="spacer"></span><button class="btn" id="bloqCancel">Cancelar</button><button class="btn pri" id="bloqSave">Bloquear período</button></div>
+  </div>
+</div>
+
+<!-- Modal tipo de veículo -->
+<div class="modal-bg" id="tipoVeicModal" hidden>
+  <div class="modal" style="width:min(480px,96vw)">
+    <div class="modal-head"><h2 id="tipoVeicModalTitle">Tipo de veículo</h2><button class="modal-x" id="tipoVeicClose">✕</button></div>
+    <div class="modal-body" style="grid-template-columns:1fr">
+      <div class="modal-form">
+        <div class="fg full"><label>Nome</label><input id="tvNome" placeholder="Ex.: Utilitário 4 / Van 18"></div>
+        <div class="fg"><label>Capacidade (passageiros)</label><input id="tvCap" type="number" min="1" step="1" placeholder="4"></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn danger" id="tipoVeicDelete">Excluir</button>
+      <span class="spacer"></span>
+      <button class="btn" id="tipoVeicCancel">Cancelar</button>
+      <button class="btn pri" id="tipoVeicSave">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal veículo + motorista -->
+<div class="modal-bg" id="veicModal" hidden>
+  <div class="modal" style="width:min(560px,96vw)">
+    <div class="modal-head"><h2 id="veicModalTitle">Veículo</h2><button class="modal-x" id="veicClose">✕</button></div>
+    <div class="modal-body" style="grid-template-columns:1fr">
+      <div class="modal-form">
+        <div class="fg full"><label>Tipo do veículo (define a capacidade)</label><select id="vfTipo"></select></div>
+        <div class="fg"><label>Placa</label><input id="vfPlaca" placeholder="MG-0A00"></div>
+        <div class="fg"><label>Modelo</label><input id="vfModelo" placeholder="Ex.: Fiat Doblò / Renault Master"></div>
+        <div class="fg"><label>Motorista</label><input id="vfMotorista" placeholder="Nome do motorista"></div>
+        <div class="fg"><label>Telefone</label><input id="vfTelefone" placeholder="(31) 9....."></div>
+        <div class="fg full"><label class="sw"><input id="vfAtivo" type="checkbox" checked> Ativo (disponível para alocação)</label></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn danger" id="veicDelete">Excluir</button>
+      <span class="spacer"></span>
+      <button class="btn" id="veicCancel">Cancelar</button>
+      <button class="btn pri" id="veicSave">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal alocação -->
+<div class="modal-bg" id="alocModal" hidden>
+  <div class="modal" style="width:min(520px,96vw)">
+    <div class="modal-head"><h2>Alocar veículo</h2><button class="modal-x" id="alocClose">✕</button></div>
+    <div class="modal-body" style="grid-template-columns:1fr">
+      <div class="modal-form">
+        <div class="fg full"><label>Viagem</label><input id="alocViagem" readonly></div>
+        <div class="fg full"><label>Veículo / motorista</label><select id="alocVeic"></select></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <span class="spacer"></span>
+      <button class="btn" id="alocCancel">Cancelar</button>
+      <button class="btn pri" id="alocConfirm">Confirmar alocação</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal tipo de aprovação -->
+<div class="modal-bg" id="tipoModal" hidden>
+  <div class="modal" style="width:min(560px,96vw)">
+    <div class="modal-head"><h2 id="tipoModalTitle">Tipo de aprovação</h2><button class="modal-x" id="tipoClose">✕</button></div>
+    <div class="modal-body" style="grid-template-columns:1fr">
+      <div class="modal-form">
+        <div class="fg full"><label>Nome</label><input id="tfNome" placeholder="Ex.: Até 100 km"></div>
+        <div class="fg full"><label>Faixa — distância máxima (km)</label><input id="tfLimite" type="number" min="1" step="1" placeholder="100"></div>
+        <div class="fg full"><label>Aprovador 1</label><select id="tfAp1"></select></div>
+        <div class="fg full"><label>Aprovador 2</label><select id="tfAp2"></select></div>
+        <div class="fg full"><label>Aprovador 3</label><select id="tfAp3"></select></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn danger" id="tipoDelete">Excluir</button>
+      <span class="spacer"></span>
+      <button class="btn" id="tipoCancel">Cancelar</button>
+      <button class="btn pri" id="tipoSave">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal edição de cooperativa -->
+<div class="modal-bg" id="coopModal" hidden>
+  <div class="modal">
+    <div class="modal-head"><h2 id="coopModalTitle">Editar fornecedor</h2><button class="modal-x" id="coopClose">✕</button></div>
+    <div class="modal-body">
+      <div class="modal-form">
+        <div class="fg full"><label>Nome</label><input id="cfNome" placeholder="Ex.: RC TRANSPORTES"></div>
+        <div class="fg"><label>CNPJ</label><input id="cfCnpj" placeholder="00.000.000/0001-00"></div>
+        <div class="fg"><label>E-mail</label><input id="cfEmail" placeholder="op@coop.br"></div>
+        <div class="fg" style="position:relative"><label>Cidade base</label><input id="cfCidade" autocomplete="off" placeholder="Digite a cidade (ex.: Belo Horizonte)"><div class="suggest" id="cfCidadeSug" hidden></div></div>
+        <div class="fg"><label>Raio de atuação (km)</label><input id="cfRaio" type="number" min="1" step="1" value="25"></div>
+        <div class="fg"><label>Latitude do centro</label><input id="cfLat" type="number" step="0.0001" placeholder="-19.5782"></div>
+        <div class="fg"><label>Longitude do centro</label><input id="cfLon" type="number" step="0.0001" placeholder="-42.6353"></div>
+        <div class="fg"><label>Prioridade (menor = 1º)</label><input id="cfPrio" type="number" min="1" step="1" value="1"></div>
+        <div class="fg"><label>Cor no mapa</label><input id="cfCor" type="color" value="#64317B" style="height:42px;padding:4px"></div>
+        <div class="fg full"><label class="sw"><input id="cfAtivo" type="checkbox" checked> Fornecedor ativo</label></div>
+      </div>
+      <div class="modal-map">
+        <div id="coopMiniMap"></div>
+        <div class="hint">Clique no mapa para definir o <b>centro</b>. O círculo mostra o raio informado.</div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn danger" id="coopDelete">Excluir</button>
+      <span class="spacer"></span>
+      <button class="btn" id="coopCancel">Cancelar</button>
+      <button class="btn pri" id="coopSave">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal detalhes p/ o aprovador -->
+<div class="modal-bg" id="aprModal" hidden>
+  <div class="modal" style="width:min(640px,96vw)">
+    <div class="modal-head"><h2 id="aprMTitle">Detalhes da viagem</h2><button class="modal-x" id="aprClose">✕</button></div>
+    <div class="modal-body" style="grid-template-columns:1fr;display:block"><div id="aprMBody"></div></div>
+    <div class="modal-foot">
+      <button class="btn danger" id="aprMReprovar">Reprovar</button>
+      <span class="spacer"></span>
+      <button class="btn" id="aprMFechar">Fechar</button>
+      <button class="btn ok" id="aprMAprovar">Aprovar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal fechamento da viagem (fornecedor lança o realizado) -->
+<div class="modal-bg" id="fechModal" hidden>
+  <div class="modal" style="width:min(600px,96vw)">
+    <div class="modal-head"><h2>Fechar viagem</h2><button class="modal-x" id="fechClose">✕</button></div>
+    <div class="modal-body" style="grid-template-columns:1fr">
+      <div class="modal-form">
+        <div class="fg full"><label>Viagem</label><input id="fcViagem" readonly></div>
+        <div class="fg"><label>KM previsto</label><input id="fcKmPrev" type="number" readonly></div>
+        <div class="fg"><label>KM realizado (viagem)</label><input id="fcKmReal" type="number" min="0" step="1"></div>
+        <div class="fg"><label>KM trânsito interno</label><input id="fcKmInterno" type="number" min="0" step="1" value="0"></div>
+        <div class="fg full"><label>Horas paradas (motorista à disposição)</label><input id="fcHoras" type="number" min="0" step="0.5" value="0"></div>
+        <div class="fg full" style="border-top:1px solid var(--line);padding-top:10px;margin-top:2px"><span class="muted" style="font-size:11.5px">Valores gastos nesta viagem (R$)</span></div>
+        <div class="fg"><label>Diária do motorista (R$)</label><input id="fcDiarias" type="number" min="0" step="0.01" value="0"></div>
+        <div class="fg"><label>Hospedagem / estadia (R$)</label><input id="fcHosp" type="number" min="0" step="0.01" value="0"></div>
+        <div class="fg"><label>Alimentação (R$)</label><input id="fcAlim" type="number" min="0" step="0.01" value="0"></div>
+        <div class="fg"><label>Franquia / outros (R$)</label><input id="fcFranquia" type="number" min="0" step="0.01" value="0"></div>
+      </div>
+      <div id="fcCalc" style="margin-top:16px"></div>
+    </div>
+    <div class="modal-foot" style="flex-wrap:wrap">
+      <div id="fcResumo" class="muted" style="flex-basis:100%;font-size:12.5px;margin-bottom:6px"></div>
+      <span class="spacer"></span><button class="btn" id="fechCancel">Cancelar</button><button class="btn pri" id="fechSave">Fechar e faturar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal delegação de aprovação -->
+<div class="modal-bg" id="delegModal" hidden>
+  <div class="modal" style="width:min(520px,96vw)">
+    <div class="modal-head"><h2 id="delegMTitle">Nova delegação</h2><button class="modal-x" id="delegClose">✕</button></div>
+    <div class="modal-body" style="grid-template-columns:1fr">
+      <div class="modal-form">
+        <div class="fg full"><label>Nível / papel de aprovação</label><select id="dgNivel"><option value="2">Gerente Executivo (Nível 2)</option><option value="3">Diretor (Nível 3)</option></select></div>
+        <div class="fg full"><label>De (titular)</label><input id="dgDe" placeholder="Ex.: Bruno Almeida (Gerente Executivo)"></div>
+        <div class="fg full"><label>Para (delegado que vai aprovar)</label><input id="dgPara" placeholder="Nome de quem aprova no lugar"></div>
+        <div class="fg"><label>Início</label><input id="dgIni" type="date"></div>
+        <div class="fg"><label>Fim</label><input id="dgFim" type="date"></div>
+        <div class="fg full"><label>Motivo / referência do e-mail</label><input id="dgMotivo" placeholder="Ex.: e-mail formalizado 28/08 — gerente em campo"></div>
+        <div class="fg full"><label class="sw"><input id="dgAtivo" type="checkbox" checked> Delegação ativa</label></div>
+      </div>
+    </div>
+    <div class="modal-foot"><button class="btn danger" id="delegDelete">Excluir</button><span class="spacer"></span><button class="btn" id="delegCancel">Cancelar</button><button class="btn pri" id="delegSave">Salvar</button></div>
+  </div>
+</div>
+
+<!-- Modal custos contratados do fornecedor (por tipo de veículo) -->
+<div class="modal-bg" id="custosModal" hidden>
+  <div class="modal" style="width:min(820px,96vw)">
+    <div class="modal-head"><h2 id="custosMTitle">Custos contratados</h2><button class="modal-x" id="custosClose">✕</button></div>
+    <div class="modal-body" style="grid-template-columns:1fr">
+      <div style="width:100%">
+        <p class="muted" style="margin:0 0 12px"><b>Tarifas contratadas</b> deste fornecedor por tipo de veículo (R$). Diária, hospedagem, alimentação e franquia não entram aqui — são valores gastos, lançados no <b>fechamento</b> de cada viagem.</p>
+        <div class="tbl-wrap"><table>
+          <thead><tr><th>Tipo</th><th>Km viagem (R$/km)</th><th>Km interno (R$/km)</th><th>Hora parada (R$/h)</th></tr></thead>
+          <tbody id="custosTbody"></tbody>
+        </table></div>
+      </div>
+    </div>
+    <div class="modal-foot"><span class="spacer"></span><button class="btn" id="custosCancel">Cancelar</button><button class="btn pri" id="custosSave">Salvar custos</button></div>
+  </div>
+</div>
+
+<!-- Modal prestação de contas (interno, só leitura) -->
+<div class="modal-bg" id="contasModal" hidden>
+  <div class="modal" style="width:min(620px,96vw)">
+    <div class="modal-head"><h2 id="contasTitle">Prestação de contas</h2><button class="modal-x" id="contasClose">✕</button></div>
+    <div class="modal-body" style="grid-template-columns:1fr;display:block"><div id="contasBody"></div></div>
+    <div class="modal-foot"><span class="spacer"></span><button class="btn" id="contasFechar">Fechar</button></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<!-- Cadastros (JSON via global; ver data/README.md) -->
+<script src="data/parametros.js"></script>
+<script src="data/cooperativas.js"></script>
+<script src="data/estacoes.js"></script>
+<script src="data/aprovadores.js"></script>
+<script src="data/locais.js"></script>
+<script src="data/tipos-aprovacao.js"></script>
+<script src="data/tipos-veiculo.js"></script>
+<script src="data/delegacoes.js"></script>
+<script>
+// ---- navegação: persona (topo esq) + contexto/perfil (topo dir) ----
+const personaBtns=document.querySelectorAll('.persona');
+let internalRole='admin';
+function setView(id){
+  document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
+  const el=document.getElementById(id); if(el)el.classList.add('active');
+  if(id==='solic'&&window._map)setTimeout(()=>window._map.invalidateSize(),80);
+}
+function applyInternalRole(role){
+  internalRole=role;
+  setView(role==='admin'?'admin':role==='aprovador'?'aprovador':'minhasViagens');
+}
+function buildCtx(p){
+  const ctx=document.getElementById('ctxSwitch');
+  if(p==='admin'){
+    ctx.innerHTML=`<span class="lbl">Perfil</span>
+      <select id="roleSel" title="Ver o sistema como este perfil">
+        <option value="admin">Admin · TI Logística</option>
+        <option value="solic">Solicitante</option>
+        <option value="aprovador">Aprovador</option>
+      </select><div class="avatar">AP</div>`;
+    const s=document.getElementById('roleSel'); s.value=internalRole;
+    s.onchange=()=>applyInternalRole(s.value);
+  } else if(p==='coop'){
+    const opts=coopStore.map(c=>`<option value="${c.id}">${c.nome}</option>`).join('');
+    ctx.innerHTML=`<span class="lbl">Ver como</span><select id="coopSel" title="Visualizar dados deste fornecedor">${opts}</select><div class="avatar">🚐</div>`;
+    document.getElementById('coopSel').onchange=e=>updateCoopView(e.target.value);
+  } else {
+    ctx.innerHTML=`<span class="idn">Rafael Nunes · Solicitante — Timóteo</span><div class="avatar">RN</div>`;
+  }
+}
+function updateCoopView(coopId){
+  const c=coopStore.find(x=>x.id===coopId)||coopStore[0]; if(!c)return;
+  const t=document.getElementById('coopPanelTitle'), sub=document.getElementById('coopPanelSub');
+  if(t)t.textContent='Painel '+c.nome;
+  if(sub)sub.innerHTML=`Viagens solicitadas na área de atuação · <b>${c.cidadeBase||''}</b> · raio ${c.raioKm} km`;
+  const rel=document.getElementById('coopTabRelatorio');
+  if(rel&&!rel.hidden&&typeof gerarRelatorio==='function')gerarRelatorio();
+}
+function selectPersona(p){
+  personaBtns.forEach(x=>x.classList.toggle('active',x.dataset.view===p));
+  buildCtx(p);
+  if(p==='admin')applyInternalRole(internalRole);
+  else setView(p);
+  if(p==='coop')updateCoopView(document.getElementById('coopSel')?.value);
+}
+personaBtns.forEach(b=>b.onclick=()=>selectPersona(b.dataset.view));
+// ---- admin nav ----
+document.querySelectorAll('.nav-i').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('.nav-i').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.admin-panel').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active'); document.getElementById(b.dataset.panel).classList.add('active');
+});
+// ---- agora/agendar ----
+// forma de pagamento (empresarial x pessoal)
+document.querySelectorAll('#payToggle button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('#payToggle button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');
+  const pessoal=b.dataset.pay==='pessoal';
+  document.getElementById('payPessoalWrap').hidden=!pessoal;
+  document.getElementById('payEmpresarial').hidden=pessoal;
+});
+
+// viajante: mostra campo de terceiro e recalcula a cadeia de aprovação
+const fViajante=document.getElementById('fViajante');
+function viajanteTerceiro(){const o=fViajante.options[fViajante.selectedIndex];return o&&o.dataset.terceiro==='1';}
+fViajante.onchange=()=>{
+  document.getElementById('fTerceiroWrap').hidden=!viajanteTerceiro();
+  renderAprovacao();
+};
+
+// passageiros adicionais (nomes das pessoas que também viajam)
+const EMP_NOMES=['Ana Prado','Carlos Dias','Juliana Reis','Marcos Vaz','Beatriz Lopes','Tiago Melo'];
+// limite de passageiros vem do TIPO de veículo (parâmetro por tipo)
+const btnAddPass=document.getElementById('btnAddPassageiro');
+const fTipoVeic=document.getElementById('fTipoVeic');
+// cadastro de tipos de veículo (compartilhado com o Admin) — capacidade limita passageiros
+const LS_TIPOSVEIC='viagens.tiposVeiculo';
+function loadTiposVeic(){try{const s=localStorage.getItem(LS_TIPOSVEIC);if(s)return JSON.parse(s);}catch(e){}return JSON.parse(JSON.stringify(window.DB_TIPOS_VEICULO||[]));}
+function saveTiposVeic(){try{localStorage.setItem(LS_TIPOSVEIC,JSON.stringify(tipoVeicStore));}catch(e){}}
+let tipoVeicStore=loadTiposVeic();
+function tipoVeicNome(id){const t=tipoVeicStore.find(x=>x.id===id);return t?t.nome:'';}
+function popularTipoVeicSelect(sel,cur){
+  sel.innerHTML=tipoVeicStore.map(t=>`<option value="${t.id}">${t.nome} (${t.capacidade} pass.)</option>`).join('');
+  if(cur&&tipoVeicStore.some(t=>t.id===cur))sel.value=cur;
+}
+popularTipoVeicSelect(fTipoVeic);
+function limitePassageiros(){
+  const t=tipoVeicStore.find(x=>x.id===fTipoVeic.value);
+  return t?t.capacidade:99;
+}
+function countAdicionais(){return document.querySelectorAll('#passageirosWrap .passageiro-field').length;}
+function atualizaBtnPass(){
+  const lim=limitePassageiros(), total=1+countAdicionais(), cheio=total>=lim;
+  btnAddPass.disabled=cheio;
+  btnAddPass.title=cheio?`Limite de ${lim} passageiros atingido`:'Adicionar passageiro';
+  const hint=document.getElementById('capHint');
+  if(hint)hint.textContent=`${fTipoVeic.value} comporta até ${lim} passageiros. Atual: ${total}.`;
+}
+fTipoVeic.addEventListener('change',()=>{
+  const lim=limitePassageiros();
+  // se trocou p/ tipo menor e excede, remove os últimos adicionais
+  let extras=document.querySelectorAll('#passageirosWrap .passageiro-field');
+  while(1+extras.length>lim && extras.length){extras[extras.length-1].remove();extras=document.querySelectorAll('#passageirosWrap .passageiro-field');toast(`Passageiro removido: ${fTipoVeic.value} comporta até ${lim}.`,'warn');}
+  renumeraPassageiros(); atualizaBtnPass();
+});
+btnAddPass.onclick=()=>{
+  const lim=limitePassageiros();
+  if(1+countAdicionais()>=lim){toast(`Máximo de ${lim} passageiros para ${fTipoVeic.value}. Troque para Van se precisar de mais.`,'warn');return;}
+  const wrap=document.getElementById('passageirosWrap');
+  const f=document.createElement('div'); f.className='field passageiro-field';
+  const opts=EMP_NOMES.map(n=>`<option value="${n}">${n}</option>`).join('');
+  f.innerHTML=`<label>Passageiro</label><span class="ic">🧑</span>
+    <select class="inp" style="padding-right:36px">${opts}<option value="terceiro">Terceiro (informar)…</option></select>
+    <button class="parada-rm" type="button" title="Remover">✕</button>`;
+  wrap.appendChild(f);
+  f.querySelector('.parada-rm').onclick=()=>{f.remove();renumeraPassageiros();atualizaBtnPass();};
+  renumeraPassageiros(); atualizaBtnPass();
+};
+function renumeraPassageiros(){
+  document.querySelectorAll('#passageirosWrap .passageiro-field label').forEach((l,i)=>l.textContent='Passageiro '+(i+2));
+}
+atualizaBtnPass(); // hint inicial
+
+// monta a caixa de aprovação a partir da distância (faixa) + viajante terceiro
+function initials(txt){return txt.split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase();}
+function renderAprovacao(){
+  const box=document.getElementById('apprList'), title=document.getElementById('apprTitle');
+  if(!pts.emb||!pts.emb.coord||!pts.dest||!pts.dest.coord){box.innerHTML='<div class="appr-empty muted">Defina embarque e destino para ver a cadeia de aprovação.</div>';title.textContent='Aprovação';return;}
+  const terceiro=viajanteTerceiro();
+  // terceiro usa a cadeia do solicitante (nível 0). Empregado usa o próprio nível.
+  const opt=fViajante.options[fViajante.selectedIndex];
+  const nivelBase=terceiro?0:(parseInt(opt&&opt.dataset.nivel)||0);
+  const {steps}=buildChain(terceiro,nivelBase);
+  title.textContent='Aprovação';
+  if(!steps.length){box.innerHTML='<div class="appr-empty muted">Diretor: viagem não requer aprovação (auto-aprovada).</div>';return;}
+  box.innerHTML=steps.map((s,i)=>`<div class="appr">
+    <div class="n${s.papel==='contrato'?' contrato':''}">${s.papel==='contrato'?'GC':initials(s.label)}</div>
+    <div class="meta"><b>${s.label}</b>${s.delegadoPara?` <span style="color:var(--accent);font-weight:600">→ delegado a ${s.delegadoPara}</span>`:''}<br><span>${s.papel==='contrato'?'gestor do contrato (terceiro)':'nível acima na hierarquia (via SAP)'}</span></div>
+    <div class="step">${i+1}º</div></div>`).join('');
+}
+
+document.getElementById('btnReq').onclick=function(){
+  if(!pts.emb||!pts.dest){toast('Informe embarque e destino.','warn');return;}
+  if(!document.getElementById('fData').value){toast('Informe a data da viagem.','warn');return;}
+  const empresarial=document.querySelector('#payToggle button.on').dataset.pay==='empresarial';
+  if(empresarial&&!document.getElementById('fCentroCusto').value.trim()){toast('Informe o centro de custo.','warn');return;}
+  if(viajanteTerceiro()&&!document.getElementById('fTerceiro').value.trim()){toast('Informe o nome do viajante terceiro.','warn');return;}
+  const first=document.querySelector('#apprList .appr .meta b');
+  this.textContent='✓ Enviado para '+(first?first.textContent:'aprovação'); this.disabled=true;
+  toast('Solicitação enviada para aprovação.','ok');
+};
+
+// ---- MAP (Leaflet + OSRM) ----
+const BRAND='#64317B', ACCENT='#E05206';
+const map=L.map('map',{zoomControl:false}).setView([-19.51,-42.60],12);
+L.control.zoom({position:'topright'}).addTo(map); // libera o canto superior esquerdo p/ a caixa de distância/tempo
+window._map=map;
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
+
+// ---- Cadastros + loading overlay ----
+const LS_COOP='viagens.cooperativas';
+function loadCoopStore(){
+  try{const s=localStorage.getItem(LS_COOP);if(s)return JSON.parse(s);}catch(e){}
+  return JSON.parse(JSON.stringify(window.DB_COOPERATIVAS||[]));
+}
+function saveCoopStore(){try{localStorage.setItem(LS_COOP,JSON.stringify(coopStore));}catch(e){}}
+let coopStore=loadCoopStore();
+// recupera tarifas dos fornecedores-semente que tenham perdido os custos (edições antigas)
+function healCustos(){const seed=window.DB_COOPERATIVAS||[];let ch=false;
+  coopStore.forEach(c=>{if(c.custos&&Object.keys(c.custos).length)return;const s=seed.find(x=>x.id===c.id);if(s&&s.custos){c.custos=JSON.parse(JSON.stringify(s.custos));ch=true;}});
+  if(ch)saveCoopStore();}
+healCustos();
+function activeCoops(){return coopStore.filter(c=>c.ativo);}
+const PARAMS=window.DB_PARAMETROS||{};
+const mapLoading=document.getElementById('mapLoading');
+let loadingN=0;
+function showLoading(t){loadingN++;if(t)mapLoading.querySelector('.ml-txt').textContent=t;mapLoading.hidden=false;}
+function hideLoading(){loadingN=Math.max(0,loadingN-1);if(loadingN===0)mapLoading.hidden=true;}
+
+// ---- Toasts (substituem alert/confirm do navegador) ----
+const TICON={info:'ℹ️',ok:'✅',warn:'⚠️',error:'⛔'};
+function dismissToast(el){el.classList.add('out');setTimeout(()=>el.remove(),240);}
+function toast(msg,type='info',opts={}){
+  const wrap=document.getElementById('toasts');
+  const el=document.createElement('div');el.className='toast '+type;
+  el.innerHTML=`<span class="ti">${TICON[type]||'ℹ️'}</span><div class="tc">${opts.title?`<div class="tt">${opts.title}</div>`:''}<div class="tm">${msg}</div></div><button class="tx" aria-label="Fechar">✕</button>`;
+  el.querySelector('.tx').onclick=()=>dismissToast(el);
+  wrap.appendChild(el);
+  const ms=opts.timeout??4200; if(ms)setTimeout(()=>{if(el.isConnected)dismissToast(el);},ms);
+  return el;
+}
+// confirmação com botões (substitui window.confirm)
+function confirmToast(msg,onYes,opts={}){
+  const wrap=document.getElementById('toasts');
+  const el=document.createElement('div');el.className='toast '+(opts.type||'warn');
+  el.innerHTML=`<span class="ti">${TICON[opts.type||'warn']}</span><div class="tc"><div class="tt">${opts.title||'Confirmar'}</div><div class="tm">${msg}</div>
+    <div class="tacts"><button class="btn pri sm" data-yes>${opts.yes||'Confirmar'}</button><button class="btn sm" data-no>Cancelar</button></div></div>`;
+  el.querySelector('[data-yes]').onclick=()=>{dismissToast(el);onYes&&onYes();};
+  el.querySelector('[data-no]').onclick=()=>dismissToast(el);
+  wrap.appendChild(el);
+  return el;
+}
+
+// Roteamento por raio é TRANSPARENTE: não exibimos os círculos de atuação no mapa.
+// (mantido no-op para não quebrar chamadas existentes.)
+function renderCoopCircles(){}
+
+// Haversine (km)
+function distKm(a,b){const R=6371,dLat=(b[0]-a[0])*Math.PI/180,dLon=(b[1]-a[1])*Math.PI/180,
+  s=Math.sin(dLat/2)**2+Math.cos(a[0]*Math.PI/180)*Math.cos(b[0]*Math.PI/180)*Math.sin(dLon/2)**2;
+  return R*2*Math.atan2(Math.sqrt(s),Math.sqrt(1-s));}
+// todas as cooperativas cujo raio cobre o ponto (ordenadas por prioridade, depois distância)
+function coopsQueCobrem(coord){
+  return activeCoops().filter(c=>c.centro).map(c=>({c,d:distKm(c.centro,coord)}))
+    .filter(x=>x.d<=x.c.raioKm).sort((x,y)=>(x.c.prioridade-y.c.prioridade)||(x.d-y.d));
+}
+let coopOverride=null;      // id escolhido manualmente na tag
+let lastCovering=[];        // últimas coops que cobrem (p/ o seletor)
+function atualizaCoop(){
+  const tag=document.getElementById('coopTag'), sc=document.getElementById('sCoop');
+  closeChooser();
+  if(!pts.emb.coord){tag.className='coop-tag';tag.innerHTML='🚐 Defina o embarque para rotear o fornecedor';coopOverride=null;lastCovering=[];return;}
+  const cov=coopsQueCobrem(pts.emb.coord); lastCovering=cov;
+  if(!cov.length){tag.className='coop-tag none';tag.innerHTML='⚠ <b>Nenhum fornecedor</b> atende este embarque — enviar para verificação interna';coopOverride=null;if(sc)sc.textContent='sem cobertura';return;}
+  // seleção: override válido, senão prioridade 1 (primeiro da lista)
+  let sel=cov.find(x=>x.c.id===coopOverride);
+  if(!sel){coopOverride=null;sel=cov[0];}
+  const multi=cov.length>1;
+  tag.className='coop-tag'+(multi?' multi':'');
+  tag.innerHTML=`🚐 Roteado para <b>${sel.c.nome}</b> <span style="opacity:.8">(prio. ${sel.c.prioridade} · ${sel.d.toFixed(0)} km)</span>`+
+    (multi?` <span class="caret">▾ ${cov.length} opções</span>`:'');
+  if(sc)sc.textContent=sel.c.nome;
+}
+function closeChooser(){const ch=document.getElementById('coopChooser');if(ch)ch.hidden=true;}
+function toggleChooser(){
+  const ch=document.getElementById('coopChooser');
+  if(!ch||lastCovering.length<2){return;}
+  if(!ch.hidden){ch.hidden=true;return;}
+  const selId=coopOverride||lastCovering[0].c.id;
+  ch.innerHTML='<div class="ch-h">Fornecedores que atendem este embarque</div>'+lastCovering.map(x=>
+    `<div class="ch-item${x.c.id===selId?' sel':''}" data-coop="${x.c.id}">
+       <span class="pr" style="background:${x.c.cor}">${x.c.prioridade}</span>
+       <span class="nm">${x.c.nome}<small>${x.c.cidadeBase||''} · ${x.d.toFixed(0)} km do centro</small></span>
+       ${x.c.id===selId?'<span class="chk">✓</span>':''}
+     </div>`).join('');
+  ch.querySelectorAll('[data-coop]').forEach(el=>el.onclick=()=>{coopOverride=el.dataset.coop;atualizaCoop();});
+  ch.hidden=false;
+}
+
+const icEmb=L.divIcon({className:'',html:`<div style="width:16px;height:16px;border-radius:50%;background:${BRAND};border:3px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.45)"></div>`,iconSize:[16,16],iconAnchor:[8,8]});
+const icDest=L.divIcon({className:'',html:`<div style="width:16px;height:16px;background:${ACCENT};border:3px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.45);transform:rotate(45deg)"></div>`,iconSize:[16,16],iconAnchor:[8,8]});
+function icParada(n){return L.divIcon({className:'',html:`<div style="width:20px;height:20px;border-radius:50%;background:#8a45a8;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);color:#fff;font:700 11px 'Public Sans';display:grid;place-items:center">${n}</div>`,iconSize:[20,20],iconAnchor:[10,10]});}
+
+// state: embarque, destino e paradas (na ordem). coord null até definir.
+const pts={emb:{coord:null,marker:null,label:'Embarque'},dest:{coord:null,marker:null,label:'Destino'}};
+let paradas=[]; // {id, coord, marker, label, inputEl, sugEl, errEl}
+let routeLayer;
+
+function setMarker(key){
+  const p=pts[key]; if(!p.coord)return;
+  if(p.marker){p.marker.setLatLng(p.coord);}
+  else{p.marker=L.marker(p.coord,{icon:key==='emb'?icEmb:icDest}).addTo(map);}
+  p.marker.bindPopup(`${p.label}`);
+}
+function renderParadaMarkers(){
+  paradas.forEach((p,i)=>{
+    if(!p.coord){if(p.marker){map.removeLayer(p.marker);p.marker=null;}return;}
+    if(p.marker){p.marker.setLatLng(p.coord);p.marker.setIcon(icParada(i+1));}
+    else p.marker=L.marker(p.coord,{icon:icParada(i+1)}).addTo(map);
+    p.marker.bindPopup(`Parada ${i+1}`);
+  });
+}
+function clearRoute(){if(routeLayer){map.removeLayer(routeLayer);routeLayer=null;}
+  mDist.textContent='—';mDur.textContent='—';sDist.textContent='—';sDur.textContent='—';}
+
+// pontos do trajeto na ordem: embarque -> paradas -> destino
+function waypoints(){return [pts.emb.coord, ...paradas.map(p=>p.coord), pts.dest.coord].filter(Boolean);}
+
+function drawRoute(){
+  atualizaCoop(); renderParadaMarkers();
+  const wps=waypoints();
+  if(wps.length<2){ // 0 ou 1 ponto: centraliza no que existir
+    if(routeLayer){map.removeLayer(routeLayer);routeLayer=null;}
+    mDist.textContent='—';mDur.textContent='—';sDist.textContent='—';sDur.textContent='—';
+    if(wps.length===1)map.setView(wps[0],14); hideLoading(); renderAprovacao(); return;
+  }
+  const coords=wps.map(c=>`${c[1]},${c[0]}`).join(';');
+  const url=`https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`;
+  fetch(url).then(r=>r.json()).then(d=>{
+    if(!d.routes||!d.routes[0])throw 0;
+    const rt=d.routes[0];
+    if(routeLayer)map.removeLayer(routeLayer);
+    routeLayer=L.geoJSON(rt.geometry,{style:{color:BRAND,weight:6,opacity:.85}}).addTo(map);
+    map.fitBounds(routeLayer.getBounds(),{padding:[60,60]});
+    const km=(rt.distance/1000).toFixed(1)+' km', min=Math.round(rt.duration/60)+' min';
+    mDist.textContent=km;mDur.textContent=min;sDist.textContent=km;sDur.textContent=min;
+    renderAprovacao();
+  }).catch(()=>{
+    if(routeLayer)map.removeLayer(routeLayer);
+    routeLayer=L.polyline(wps,{color:BRAND,weight:5,dashArray:'8 8'}).addTo(map);
+    map.fitBounds(routeLayer.getBounds(),{padding:[60,60]});
+    mDist.textContent='rota indisponível';mDur.textContent='—';sDist.textContent='—';sDur.textContent='—';
+  }).finally(hideLoading);
+}
+
+// ---- Photon geocoding (komoot / OSM) — bom p/ POI: aeroporto, hospital, etc ----
+const GEO='https://photon.komoot.io/api/';
+const BIAS={lat:-19.51,lon:-42.60}; // viés Vale do Aço; ajusta ranking regional
+// normaliza (minúsculas, sem acento) p/ casar apelidos
+function norm(s){return (s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');}
+// locais conhecidos (Aperam etc.) viram "features" no mesmo formato do Photon
+function locaisMatch(q){
+  const n=norm(q); if(n.length<3)return [];
+  return (window.DB_LOCAIS||[]).filter(l=>{
+    const alvo=norm(l.nome)+' '+(l.apelidos||[]).map(norm).join(' ');
+    return n.split(/\s+/).every(t=>alvo.includes(t));
+  }).map(l=>({geometry:{coordinates:[l.lon,l.lat]},properties:{
+    name:l.nome, osm_value:l.tipo, osm_key:l.tipo, city:l.cidade, state:l.uf, countrycode:'BR', _local:true}}));
+}
+// é uma CIDADE/município (place)?
+function isCidade(f){const p=f.properties||{};return p.osm_key==='place'&&['city','town','municipality','village','hamlet'].includes(p.osm_value);}
+// pontuação p/ ordenar: cidade e nome exato primeiro, depois rua/POI
+function rankScore(q,f){const p=f.properties||{};const n=norm(p.name||''),nq=norm(q);let s=0;
+  if(isCidade(f))s+=5;
+  if(n===nq)s+=4; else if(n.startsWith(nq))s+=2; else if(n.includes(nq))s+=1;
+  if(p.osm_key==='place')s+=1;
+  return s;}
+function geocode(q){
+  const locais=locaisMatch(q);
+  const u=`${GEO}?q=${encodeURIComponent(q)}&limit=12&lat=${BIAS.lat}&lon=${BIAS.lon}`;
+  return fetch(u,{headers:{'Accept':'application/json'}})
+    .then(r=>r.json())
+    .then(d=>{
+      let f=(d&&d.features)||[];
+      f=f.filter(x=>!x.properties.countrycode||x.properties.countrycode==='BR'); // só Brasil
+      f.sort((a,b)=>rankScore(q,b)-rankScore(q,a)); // cidades / nomes exatos primeiro, depois ruas
+      return [...locais, ...f]; // locais conhecidos primeiro
+    })
+    .catch(()=>locais); // Photon falhou -> pelo menos os locais
+}
+// só cidades/municípios (usado no cadastro de fornecedor — cidade base)
+function geocodeCidade(q){
+  return geocode(q).then(rs=>{const cid=rs.filter(isCidade);return cid.length?cid:rs;});
+}
+const TYPE={aerodrome:'✈ Aeroporto',airport:'✈ Aeroporto',hospital:'🏥 Hospital',clinic:'🏥 Clínica',
+  university:'🎓 Universidade',college:'🎓 Faculdade',school:'🏫 Escola',bus_station:'🚌 Rodoviária',
+  fuel:'⛽ Posto',hotel:'🏨 Hotel',industrial:'🏭 Indústria',company:'🏢 Empresa',office:'🏢 Escritório',
+  city:'🏙 Cidade',town:'🏙 Cidade',municipality:'🏙 Município',village:'🏘 Distrito',hamlet:'🏘 Povoado'};
+function fmt(feat){
+  const p=feat.properties||{};
+  const tag=TYPE[p.osm_value]||TYPE[p.osm_key]||'';
+  // rua + número (endereço completo). Se for POI com nome, usa o nome e agrega rua/número.
+  const ruaNum=[p.street, p.housenumber].filter(Boolean).join(', ');
+  const primeiro=p.name||ruaNum||'Endereço';
+  const main=(p.name&&ruaNum)?`${p.name} — ${ruaNum}`:primeiro;
+  const cidade=p.city||p.town||p.village||p.county||p.district;
+  const sub=[tag,p.district&&p.district!==cidade?p.district:'',cidade,p.state].filter(Boolean).join(' · ');
+  // rótulo salvo: endereço + cidade + estado
+  const full=[main,cidade,p.state].filter(Boolean).join(', ');
+  return {main,sub:sub||'Brasil',full};
+}
+// insere o número manual logo após a rua (antes da cidade)
+function insertNum(full,num){
+  const n=(num==null?'':String(num)).trim(); if(!n)return full;
+  const i=full.indexOf(', ');
+  return i<0?`${full}, nº ${n}`:`${full.slice(0,i)}, nº ${n}${full.slice(i)}`;
+}
+function numEl(key){return document.getElementById(key==='emb'?'fEmbNum':'fDestNum');}
+function applyPick(key,feat){
+  if(key==='emb')coopOverride=null; // novo embarque -> volta à prioridade automática
+  showLoading(key==='emb'?'Reposicionando embarque…':'Reposicionando destino…');
+  const c=feat.geometry.coordinates; // [lon,lat]
+  const p=pts[key]; p.coord=[c[1],c[0]]; p.base=fmt(feat).full;
+  p.label=(key==='emb'?'Embarque · ':'Destino · ')+insertNum(p.base,numEl(key).value);
+  setMarker(key); drawRoute();
+}
+
+// remove o ponto do mapa (campo vazio ou endereço inexistente)
+function clearPoint(key){
+  const p=pts[key];
+  if(p.marker){map.removeLayer(p.marker);p.marker=null;}
+  p.coord=null;
+  if(routeLayer){map.removeLayer(routeLayer);routeLayer=null;}
+  mDist.textContent='—';mDur.textContent='—';sDist.textContent='—';sDur.textContent='—';
+  atualizaCoop(); renderAprovacao();
+}
+
+function attachAutocomplete(inputId,sugId,key){
+  const inp=document.getElementById(inputId), box=document.getElementById(sugId);
+  const err=document.getElementById(key==='emb'?'errEmb':'errDest');
+  let timer,items=[],hl=-1,picked=false;
+  function setErr(msg){if(msg){err.textContent=msg;err.hidden=false;inp.classList.add('invalid');}else{err.hidden=true;inp.classList.remove('invalid');}}
+  function close(){box.hidden=true;box.innerHTML='';hl=-1;}
+  function render(){
+    if(!items.length){box.innerHTML='<div class="sug-empty">Nenhum endereço encontrado</div>';box.hidden=false;return;}
+    box.innerHTML=items.map((it,i)=>{const f=fmt(it);return `<div class="sug-item${i===hl?' hl':''}" data-i="${i}"><span class="pin">📍</span><span class="tx"><b>${f.main}</b><br><span>${f.sub}</span></span></div>`;}).join('');
+    box.hidden=false;
+    box.querySelectorAll('.sug-item').forEach(el=>el.onmousedown=(e)=>{e.preventDefault();choose(+el.dataset.i);});
+  }
+  function choose(i){const it=items[i];if(!it)return;inp.value=fmt(it).full;picked=true;setErr('');close();applyPick(key,it);}
+  inp.addEventListener('input',()=>{
+    picked=false;setErr('');clearTimeout(timer);const q=inp.value.trim();
+    if(!q){clearPoint(key);close();return;}           // campo vazio -> limpa o ponto
+    if(q.length<3){close();return;}
+    box.innerHTML='<div class="sug-loading">Buscando endereços…</div>';box.hidden=false;
+    timer=setTimeout(()=>{geocode(q).then(r=>{items=r||[];hl=-1;render();}).catch(()=>{items=[];render();});},420);
+  });
+  inp.addEventListener('keydown',(e)=>{
+    if(box.hidden)return;
+    if(e.key==='ArrowDown'){e.preventDefault();hl=Math.min(hl+1,items.length-1);render();}
+    else if(e.key==='ArrowUp'){e.preventDefault();hl=Math.max(hl-1,0);render();}
+    else if(e.key==='Enter'){if(hl>=0){e.preventDefault();choose(hl);}}
+    else if(e.key==='Escape'){close();}
+  });
+  // blur / tab: se digitou e não escolheu, tenta o 1º resultado; se não existir, marca inválido
+  inp.addEventListener('blur',()=>{
+    setTimeout(()=>{
+      close();
+      if(picked)return;
+      const q=inp.value.trim();
+      if(!q){clearPoint(key);setErr('');return;}
+      if(q.length<3){setErr('Digite ao menos 3 caracteres');clearPoint(key);return;}
+      geocode(q).then(r=>{
+        if(r&&r[0]){inp.value=fmt(r[0]).full;picked=true;setErr('');applyPick(key,r[0]);}
+        else{setErr('Endereço não encontrado. Escolha uma sugestão válida.');clearPoint(key);}
+      }).catch(()=>{setErr('Falha ao buscar. Tente novamente.');});
+    },160);
+  });
+}
+
+// ---- reverse geocode (Photon) p/ rotular um ponto escolhido no mapa ----
+function reverseGeocode(lat,lon){
+  const u=`https://photon.komoot.io/reverse?lat=${lat}&lon=${lon}`;
+  return fetch(u).then(r=>r.json()).then(d=>{
+    const f=d&&d.features&&d.features[0];
+    return f?fmt(f).full:`Ponto (${lat.toFixed(4)}, ${lon.toFixed(4)})`;
+  }).catch(()=>`Ponto (${lat.toFixed(4)}, ${lon.toFixed(4)})`);
+}
+
+// ---- Paradas (formulário lateral) ----
+function paradaNovoId(){return 'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);}
+function renumeraParadas(){
+  paradas.forEach((p,i)=>{const lb=p.fieldEl&&p.fieldEl.querySelector('label');if(lb)lb.textContent='Parada '+(i+1);});
+}
+function addParada(coord,label){
+  const id=paradaNovoId();
+  const wrap=document.getElementById('paradasWrap');
+  const field=document.createElement('div');
+  field.className='field parada-field'; field.dataset.pid=id;
+  field.innerHTML=`<label>Parada ${paradas.length+1}</label>
+    <div class="addr-row">
+      <div class="addr-main"><span class="ic">⏸</span><input class="inp" autocomplete="off" placeholder="Digite ou clique no mapa"></div>
+      <div class="num-wrap"><label>Nº / Compl.</label><input class="inp num" placeholder="ex.: 123"></div>
+      <button class="parada-rm" title="Remover" type="button">✕</button>
+    </div>
+    <div class="suggest" hidden></div><div class="fld-err" hidden></div>`;
+  wrap.appendChild(field);
+  const p={id,coord:coord||null,marker:null,label:label||'',base:label||'',fieldEl:field,
+    inputEl:field.querySelector('.addr-main input'),numEl:field.querySelector('.num'),
+    sugEl:field.querySelector('.suggest'),errEl:field.querySelector('.fld-err')};
+  paradas.push(p);
+  if(label)p.inputEl.value=label;
+  p.numEl.addEventListener('input',()=>{if(!p.coord)return;p.label=insertNum(p.base||'',p.numEl.value);renderParadaMarkers();});
+  field.querySelector('.parada-rm').onclick=()=>removeParada(id);
+  attachParadaAutocomplete(p);
+  renumeraParadas();
+  if(coord){renderParadaMarkers();drawRoute();}
+  return p;
+}
+function removeParada(id){
+  const i=paradas.findIndex(p=>p.id===id); if(i<0)return;
+  const p=paradas[i];
+  if(p.marker)map.removeLayer(p.marker);
+  p.fieldEl.remove(); paradas.splice(i,1);
+  renumeraParadas(); renderParadaMarkers(); drawRoute();
+}
+document.getElementById('btnAddParada').onclick=()=>addParada();
+
+// autocomplete de uma parada (usa geocode/fmt globais)
+function attachParadaAutocomplete(p){
+  const inp=p.inputEl, box=p.sugEl, err=p.errEl;
+  let timer,items=[],hl=-1,picked=!!p.coord;
+  const setErr=m=>{if(m){err.textContent=m;err.hidden=false;inp.classList.add('invalid');}else{err.hidden=true;inp.classList.remove('invalid');}};
+  const close=()=>{box.hidden=true;box.innerHTML='';hl=-1;};
+  function render(){
+    if(!items.length){box.innerHTML='<div class="sug-empty">Nenhum endereço encontrado</div>';box.hidden=false;return;}
+    box.innerHTML=items.map((it,i)=>{const f=fmt(it);return `<div class="sug-item${i===hl?' hl':''}" data-i="${i}"><span class="pin">📍</span><span class="tx"><b>${f.main}</b><br><span>${f.sub}</span></span></div>`;}).join('');
+    box.hidden=false;
+    box.querySelectorAll('.sug-item').forEach(el=>el.onmousedown=e=>{e.preventDefault();choose(+el.dataset.i);});
+  }
+  function choose(i){const it=items[i];if(!it)return;inp.value=fmt(it).full;picked=true;setErr('');close();
+    const c=it.geometry.coordinates;p.coord=[c[1],c[0]];p.base=fmt(it).full;p.label=insertNum(p.base,p.numEl.value);renderParadaMarkers();drawRoute();}
+  inp.addEventListener('input',()=>{picked=false;setErr('');clearTimeout(timer);const q=inp.value.trim();
+    if(!q){p.coord=null;renderParadaMarkers();drawRoute();close();return;}
+    if(q.length<3){close();return;}
+    box.innerHTML='<div class="sug-loading">Buscando endereços…</div>';box.hidden=false;
+    timer=setTimeout(()=>{geocode(q).then(r=>{items=r||[];hl=-1;render();}).catch(()=>{items=[];render();});},420);});
+  inp.addEventListener('keydown',e=>{if(box.hidden)return;
+    if(e.key==='ArrowDown'){e.preventDefault();hl=Math.min(hl+1,items.length-1);render();}
+    else if(e.key==='ArrowUp'){e.preventDefault();hl=Math.max(hl-1,0);render();}
+    else if(e.key==='Enter'){if(hl>=0){e.preventDefault();choose(hl);}}
+    else if(e.key==='Escape'){close();}});
+  inp.addEventListener('blur',()=>{setTimeout(()=>{close();if(picked)return;const q=inp.value.trim();
+    if(!q){p.coord=null;renderParadaMarkers();drawRoute();return;}
+    if(q.length<3){setErr('Digite ao menos 3 caracteres');return;}
+    geocode(q).then(r=>{if(r&&r[0]){inp.value=fmt(r[0]).full;picked=true;setErr('');const c=r[0].geometry.coordinates;p.coord=[c[1],c[0]];p.base=fmt(r[0]).full;p.label=insertNum(p.base,p.numEl.value);renderParadaMarkers();drawRoute();}
+      else setErr('Endereço não encontrado. Escolha uma sugestão válida.');}).catch(()=>setErr('Falha ao buscar.'));},160);});
+}
+
+// ---- Clique no mapa: alfinete + caixa "Definir como" ----
+function setPontoMapa(alvo,latlng){
+  const lat=latlng.lat, lon=latlng.lng;
+  if(alvo==='emb'||alvo==='dest'){
+    if(alvo==='emb')coopOverride=null;
+    const p=pts[alvo]; p.coord=[lat,lon]; p.label=(alvo==='emb'?'Embarque':'Destino'); setMarker(alvo);
+    const inp=document.getElementById(alvo==='emb'?'fEmb':'fDest'); inp.classList.remove('invalid');
+    document.getElementById(alvo==='emb'?'errEmb':'errDest').hidden=true;
+    p.base=`Ponto (${lat.toFixed(4)}, ${lon.toFixed(4)})`; inp.value=p.base;
+    showLoading('Localizando…'); reverseGeocode(lat,lon).then(nm=>{p.base=nm;inp.value=nm;p.label=(alvo==='emb'?'Embarque · ':'Destino · ')+insertNum(nm,numEl(alvo).value);setMarker(alvo);}).finally(hideLoading);
+    drawRoute();
+  }else{ // parada: reaproveita uma caixinha vazia se houver, senão cria
+    let p=paradas.find(x=>!x.coord);
+    const rotulo=`Ponto (${lat.toFixed(4)}, ${lon.toFixed(4)})`;
+    if(p){p.coord=[lat,lon];p.base=rotulo;p.label=rotulo;p.inputEl.value=rotulo;p.inputEl.classList.remove('invalid');p.errEl.hidden=true;renderParadaMarkers();drawRoute();}
+    else{p=addParada([lat,lon],rotulo);}
+    reverseGeocode(lat,lon).then(nm=>{p.base=nm;p.inputEl.value=nm;p.label=insertNum(nm,p.numEl.value);renderParadaMarkers();});
+  }
+}
+map.on('click',e=>{
+  const {lat,lng}=e.latlng;
+  const html=document.createElement('div'); html.className='mp-pop';
+  html.innerHTML=`<div class="mp-t">Definir este ponto como:</div><div class="mp-btns">
+    <button data-a="emb"><span class="em">⦿</span>Origem (embarque)</button>
+    <button data-a="dest"><span class="em">◆</span>Destino</button>
+    <button data-a="parada"><span class="em">⏸</span>Adicionar parada</button></div>`;
+  const pop=L.popup({closeButton:true,className:'mp-leaflet'}).setLatLng(e.latlng).setContent(html).openOn(map);
+  html.querySelectorAll('button').forEach(b=>b.onclick=()=>{map.closePopup(pop);setPontoMapa(b.dataset.a,{lat,lng});});
+});
+
+// init: mapa limpo, sem alfinetes; wire autocomplete
+map.setView([PARAMS.biasMapa?PARAMS.biasMapa[0]:-19.51, PARAMS.biasMapa?PARAMS.biasMapa[1]:-42.60], 11);
+atualizaCoop();
+attachAutocomplete('fEmb','sugEmb','emb');
+attachAutocomplete('fDest','sugDest','dest');
+
+// nº/complemento de embarque e destino -> recompõe o rótulo do ponto
+['emb','dest'].forEach(key=>{
+  numEl(key).addEventListener('input',()=>{const p=pts[key];if(!p.coord)return;
+    p.label=(key==='emb'?'Embarque · ':'Destino · ')+insertNum(p.base||'',numEl(key).value);setMarker(key);});
+});
+
+// seletor de cooperativa na tag do mapa (quando +1 cobre o embarque)
+document.getElementById('coopTag').addEventListener('click',e=>{e.stopPropagation();toggleChooser();});
+document.addEventListener('click',e=>{const ch=document.getElementById('coopChooser');if(ch&&!ch.hidden&&!ch.contains(e.target))closeChooser();});
+
+// =================== ADMIN: CRUD de cooperativas ===================
+const $=id=>document.getElementById(id);
+function badge(a){return a?'<span class="badge b-ok">Ativa</span>':'<span class="badge b-wait">Inativa</span>';}
+function renderCoopTable(){
+  const tb=$('coopTbody'); if(!tb)return;
+  tb.innerHTML=coopStore.map(c=>{
+    const centro=c.centro?`${c.centro[0].toFixed(3)}, ${c.centro[1].toFixed(3)}`:'—';
+    return `<tr>
+      <td><span class="color-dot" style="background:${c.cor}"></span><b>${c.nome}</b><br><span class="muted">${c.email||''}</span></td>
+      <td class="muted">${c.cnpj||'—'}</td><td>${c.cidadeBase||'—'}</td>
+      <td class="muted">${centro}</td><td>${c.raioKm} km</td><td>${c.prioridade}</td>
+      <td>${badge(c.ativo)}</td>
+      <td class="row-actions"><button class="btn sm" data-custos="${c.id}">Custos</button><button class="btn sm" data-edit="${c.id}">Editar</button></td>
+    </tr>`;}).join('');
+  tb.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>openCoopModal(b.dataset.edit));
+  tb.querySelectorAll('[data-custos]').forEach(b=>b.onclick=()=>openCustos(b.dataset.custos));
+}
+
+// mini-mapa do modal
+let miniMap,miniMarker,miniCircle,editingId=null;
+function ensureMiniMap(){
+  if(miniMap)return;
+  miniMap=L.map('coopMiniMap',{zoomControl:true}).setView([-19.51,-42.60],10);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OSM'}).addTo(miniMap);
+  miniMap.on('click',e=>{ $('cfLat').value=e.latlng.lat.toFixed(5); $('cfLon').value=e.latlng.lng.toFixed(5); updateMiniPreview(); });
+}
+function updateMiniPreview(){
+  if(!miniMap)return;
+  const lat=parseFloat($('cfLat').value), lon=parseFloat($('cfLon').value);
+  const raio=Math.max(1,parseFloat($('cfRaio').value)||1), cor=$('cfCor').value;
+  if(isNaN(lat)||isNaN(lon)){if(miniMarker){miniMap.removeLayer(miniMarker);miniMarker=null;}if(miniCircle){miniMap.removeLayer(miniCircle);miniCircle=null;}return;}
+  const ll=[lat,lon];
+  if(miniMarker)miniMarker.setLatLng(ll);else miniMarker=L.marker(ll,{draggable:true}).addTo(miniMap).on('dragend',ev=>{const p=ev.target.getLatLng();$('cfLat').value=p.lat.toFixed(5);$('cfLon').value=p.lng.toFixed(5);updateMiniPreview();});
+  if(miniCircle){miniCircle.setLatLng(ll);miniCircle.setRadius(raio*1000);miniCircle.setStyle({color:cor,fillColor:cor});}
+  else miniCircle=L.circle(ll,{radius:raio*1000,color:cor,fillColor:cor,fillOpacity:.08,weight:1.5}).addTo(miniMap);
+  miniMap.setView(ll, raio>50?8:raio>20?9:10);
+}
+['cfRaio','cfCor','cfLat','cfLon'].forEach(id=>{const el=$(id);el&&el.addEventListener('input',updateMiniPreview);});
+
+// autocomplete da CIDADE BASE (igual embarque/destino, mas só cidades) — marca o centro no mini-mapa
+function attachCidadeAutocomplete(){
+  const inp=$('cfCidade'), box=$('cfCidadeSug'); if(!inp||!box)return;
+  let timer,items=[],hl=-1,picked=false;
+  const close=()=>{box.hidden=true;box.innerHTML='';hl=-1;};
+  function render(){
+    if(!items.length){box.innerHTML='<div class="sug-empty">Nenhuma cidade encontrada</div>';box.hidden=false;return;}
+    box.innerHTML=items.map((it,i)=>{const f=fmt(it);return `<div class="sug-item${i===hl?' hl':''}" data-i="${i}"><span class="pin">🏙</span><span class="tx"><b>${f.main}</b><br><span>${f.sub}</span></span></div>`;}).join('');
+    box.hidden=false;
+    box.querySelectorAll('.sug-item').forEach(el=>el.onmousedown=e=>{e.preventDefault();choose(+el.dataset.i);});
+  }
+  function choose(i){const it=items[i];if(!it)return;const p=it.properties||{},c=it.geometry.coordinates;
+    inp.value=[p.name,p.state].filter(Boolean).join(', ');picked=true;close();
+    $('cfLat').value=c[1].toFixed(5);$('cfLon').value=c[0].toFixed(5);updateMiniPreview();}
+  inp.addEventListener('input',()=>{picked=false;clearTimeout(timer);const q=inp.value.trim();
+    if(q.length<3){close();return;}
+    box.innerHTML='<div class="sug-loading">Buscando cidades…</div>';box.hidden=false;
+    timer=setTimeout(()=>{geocodeCidade(q).then(r=>{items=r||[];hl=-1;render();}).catch(()=>{items=[];render();});},380);});
+  inp.addEventListener('keydown',e=>{if(box.hidden)return;
+    if(e.key==='ArrowDown'){e.preventDefault();hl=Math.min(hl+1,items.length-1);render();}
+    else if(e.key==='ArrowUp'){e.preventDefault();hl=Math.max(hl-1,0);render();}
+    else if(e.key==='Enter'){if(hl>=0){e.preventDefault();choose(hl);}}
+    else if(e.key==='Escape'){close();}});
+  inp.addEventListener('blur',()=>setTimeout(close,160));
+}
+attachCidadeAutocomplete();
+
+function openCoopModal(id){
+  editingId=id;
+  const c=id?coopStore.find(x=>x.id===id):null;
+  $('coopModalTitle').textContent=c?'Editar fornecedor':'Novo fornecedor';
+  $('cfNome').value=c?c.nome:''; $('cfCnpj').value=c?(c.cnpj||''):''; $('cfEmail').value=c?(c.email||''):'';
+  $('cfCidade').value=c?(c.cidadeBase||''):''; $('cfRaio').value=c?c.raioKm:25;
+  $('cfLat').value=c&&c.centro?c.centro[0]:''; $('cfLon').value=c&&c.centro?c.centro[1]:'';
+  $('cfPrio').value=c?c.prioridade:1; $('cfCor').value=c?c.cor:'#64317B'; $('cfAtivo').checked=c?!!c.ativo:true;
+  $('coopDelete').style.visibility=c?'visible':'hidden';
+  $('coopModal').hidden=false;
+  setTimeout(()=>{ensureMiniMap();miniMap.invalidateSize();updateMiniPreview();},60);
+}
+function closeCoopModal(){$('coopModal').hidden=true;}
+
+function saveCoop(){
+  const nome=$('cfNome').value.trim();
+  if(!nome){toast('Informe o nome do fornecedor.','warn',{title:'Campo obrigatório'});return;}
+  const lat=parseFloat($('cfLat').value), lon=parseFloat($('cfLon').value);
+  if(isNaN(lat)||isNaN(lon)){toast('Clique no mini-mapa para definir o centro de atuação.','warn',{title:'Centro não definido'});return;}
+  const prio=Math.max(1,parseInt($('cfPrio').value)||1);
+  const dup=coopStore.find(c=>c.id!==editingId && c.prioridade===prio);
+  if(dup){toast(`Prioridade ${prio} já usada por "${dup.nome}". Cada fornecedor precisa de prioridade única — ela decide quem atende primeiro quando mais de um cobre o embarque.`,'error',{title:'Prioridade duplicada',timeout:6000});return;}
+  const antigo=editingId?coopStore.find(c=>c.id===editingId):null;
+  const obj={
+    id: editingId || ('coop-'+Date.now()),
+    nome, cnpj:$('cfCnpj').value.trim(), email:$('cfEmail').value.trim(),
+    cidadeBase:$('cfCidade').value.trim(), centro:[lat,lon],
+    raioKm:Math.max(1,parseFloat($('cfRaio').value)||1),
+    prioridade:prio,
+    cor:$('cfCor').value, ativo:$('cfAtivo').checked,
+    custos:(antigo&&antigo.custos)||{}   // preserva as tarifas contratadas ao editar
+  };
+  const novo=!editingId;
+  if(editingId){const i=coopStore.findIndex(x=>x.id===editingId);coopStore[i]=obj;}
+  else coopStore.push(obj);
+  saveCoopStore(); renderCoopTable(); renderCoopCircles(); atualizaCoop(); closeCoopModal();
+  logAudit('Fornecedor', antigo?'U':'I', obj.id, obj.nome, diffCampos(antigo,obj,CAMPOS_FORN));
+  toast(`Fornecedor "${obj.nome}" ${novo?'cadastrado':'atualizado'}.`,'ok');
+}
+function deleteCoop(){
+  if(!editingId)return;
+  const alvo=coopStore.find(x=>x.id===editingId), nome=alvo?alvo.nome:'';
+  confirmToast(`Excluir o fornecedor "${nome}"? Esta ação não pode ser desfeita.`,()=>{
+    logAudit('Fornecedor','D',editingId,nome,[]);
+    coopStore=coopStore.filter(x=>x.id!==editingId);
+    saveCoopStore(); renderCoopTable(); renderCoopCircles(); atualizaCoop(); closeCoopModal();
+    toast(`Fornecedor "${nome}" excluído.`,'info');
+  },{title:'Excluir fornecedor',yes:'Excluir',type:'error'});
+}
+$('btnNovaCoop')&&($('btnNovaCoop').onclick=()=>openCoopModal(null));
+$('coopSave').onclick=saveCoop; $('coopDelete').onclick=deleteCoop;
+$('coopCancel').onclick=closeCoopModal; $('coopClose').onclick=closeCoopModal;
+$('coopModal').addEventListener('mousedown',e=>{if(e.target===$('coopModal'))closeCoopModal();});
+$('btnResetCoop')&&($('btnResetCoop').onclick=()=>{
+  confirmToast('Restaurar o cadastro original do arquivo? Suas edições locais serão descartadas.',()=>{
+    try{localStorage.removeItem(LS_COOP);}catch(e){}
+    coopStore=JSON.parse(JSON.stringify(window.DB_COOPERATIVAS||[]));
+    renderCoopTable(); renderCoopCircles(); atualizaCoop();
+    toast('Cadastro restaurado ao padrão do arquivo.','ok');
+  },{title:'Restaurar padrão',yes:'Restaurar'});
+});
+// =================== ADMIN: Tipos de aprovação ===================
+const ROLE_LABEL={gn1:'Gerente Nível 1',gn2:'Gerente Nível 2',dir:'Diretor'};
+const ROLE_OPTS=[{v:'',t:'— (não usa)'},{v:'gn1',t:'Gerente Nível 1'},{v:'gn2',t:'Gerente Nível 2'},{v:'dir',t:'Diretor'}];
+const LS_TIPOS='viagens.tiposAprovacao';
+function loadTipos(){try{const s=localStorage.getItem(LS_TIPOS);if(s)return JSON.parse(s);}catch(e){}return JSON.parse(JSON.stringify(window.DB_TIPOS_APROVACAO||[]));}
+function saveTipos(){try{localStorage.setItem(LS_TIPOS,JSON.stringify(tipoStore));}catch(e){}}
+let tipoStore=loadTipos();
+function roleTxt(r){return r?ROLE_LABEL[r]:'—';}
+function renderTiposTable(){
+  const tb=$('tiposTbody'); if(!tb)return;
+  const ord=[...tipoStore].sort((a,b)=>a.limiteKm-b.limiteKm);
+  tb.innerHTML=ord.map(t=>`<tr>
+    <td><b>${t.nome}</b></td><td>${t.limiteKm} km</td>
+    <td>${roleTxt(t.aprovador1)}</td><td>${roleTxt(t.aprovador2)}</td><td>${roleTxt(t.aprovador3)}</td>
+    <td class="row-actions"><button class="btn sm" data-tipo="${t.id}">Editar</button></td></tr>`).join('');
+  tb.querySelectorAll('[data-tipo]').forEach(b=>b.onclick=()=>openTipoModal(b.dataset.tipo));
+}
+// escolhe a faixa cuja distância máxima cobre a viagem (menor limite >= dist); acima de tudo, a maior
+function pickTipo(distKm){
+  const ord=[...tipoStore].sort((a,b)=>a.limiteKm-b.limiteKm);
+  return ord.find(t=>distKm<=t.limiteKm) || ord[ord.length-1] || null;
+}
+// REGRA FIXA (reunião 03/09): comum e Gerente Nível 1 -> Gerente Executivo (Nível 2);
+// Gerente Executivo -> Diretor (Nível 3); Diretor -> sem aprovação (auto-aprovada).
+const NIVEL_LABEL={1:'Gerente Nível 1',2:'Gerente Executivo',3:'Diretor'};
+function alvoAprovacao(nivelViajante){
+  if(nivelViajante>=3)return null;   // Diretor: auto-aprova
+  if(nivelViajante===2)return 3;     // Gerente Executivo -> Diretor
+  return 2;                          // comum e Nível 1 -> Gerente Executivo
+}
+function buildChain(isTerceiro,nivelBase){
+  nivelBase=nivelBase||0; const steps=[];
+  if(isTerceiro)steps.push({papel:'contrato',nivel:0,label:'Gestor do Contrato'});
+  const alvo=alvoAprovacao(nivelBase);
+  if(alvo){const d=delegAtivaPara(alvo);
+    steps.push({papel:'nivel',nivel:alvo,label:NIVEL_LABEL[alvo],delegadoPara:d?d.paraQuem:null});}
+  return {steps};
+}
+let tipoEditId=null;
+function fillRoleSel(sel,val){sel.innerHTML=ROLE_OPTS.map(o=>`<option value="${o.v}">${o.t}</option>`).join('');sel.value=val||'';}
+function openTipoModal(id){
+  tipoEditId=id; const t=id?tipoStore.find(x=>x.id===id):null;
+  $('tipoModalTitle').textContent=t?'Editar tipo de aprovação':'Novo tipo de aprovação';
+  $('tfNome').value=t?t.nome:''; $('tfLimite').value=t?t.limiteKm:'';
+  fillRoleSel($('tfAp1'),t?t.aprovador1:'gn1'); fillRoleSel($('tfAp2'),t?t.aprovador2:''); fillRoleSel($('tfAp3'),t?t.aprovador3:'');
+  $('tipoDelete').style.visibility=t?'visible':'hidden';
+  $('tipoModal').hidden=false;
+}
+function saveTipo(){
+  const nome=$('tfNome').value.trim(), limite=parseInt($('tfLimite').value);
+  if(!nome){toast('Informe o nome do tipo.','warn');return;}
+  if(!limite||limite<1){toast('Informe a distância máxima (km).','warn');return;}
+  const ap1=$('tfAp1').value||null;
+  if(!ap1){toast('O Aprovador 1 é obrigatório.','warn');return;}
+  const obj={id:tipoEditId||('tipo-'+Date.now()),nome,limiteKm:limite,aprovador1:ap1,aprovador2:$('tfAp2').value||null,aprovador3:$('tfAp3').value||null};
+  if(tipoEditId){const i=tipoStore.findIndex(x=>x.id===tipoEditId);tipoStore[i]=obj;}else tipoStore.push(obj);
+  saveTipos(); renderTiposTable(); $('tipoModal').hidden=true;
+  toast(`Tipo "${nome}" salvo.`,'ok');
+}
+function deleteTipo(){
+  if(!tipoEditId)return;
+  const t=tipoStore.find(x=>x.id===tipoEditId), nome=t?t.nome:'';
+  confirmToast(`Excluir o tipo "${nome}"?`,()=>{tipoStore=tipoStore.filter(x=>x.id!==tipoEditId);saveTipos();renderTiposTable();$('tipoModal').hidden=true;toast('Tipo excluído.','info');},{title:'Excluir tipo',yes:'Excluir',type:'error'});
+}
+$('btnNovoTipo')&&($('btnNovoTipo').onclick=()=>openTipoModal(null));
+$('tipoSave').onclick=saveTipo; $('tipoDelete').onclick=deleteTipo;
+$('tipoCancel').onclick=()=>$('tipoModal').hidden=true; $('tipoClose').onclick=()=>$('tipoModal').hidden=true;
+$('tipoModal').addEventListener('mousedown',e=>{if(e.target===$('tipoModal'))$('tipoModal').hidden=true;});
+$('btnResetTipos')&&($('btnResetTipos').onclick=()=>{confirmToast('Restaurar os tipos padrão? Edições locais serão descartadas.',()=>{try{localStorage.removeItem(LS_TIPOS);}catch(e){}tipoStore=JSON.parse(JSON.stringify(window.DB_TIPOS_APROVACAO||[]));renderTiposTable();toast('Tipos restaurados.','ok');},{title:'Restaurar padrão',yes:'Restaurar'});});
+renderTiposTable();
+
+// =================== COOPERATIVA: abas + frota + alocação ===================
+document.querySelectorAll('#coopTabs [data-ctab]').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('#coopTabs [data-ctab]').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');
+  const v=b.dataset.ctab;
+  document.getElementById('coopTabViagens').hidden=v!=='viagens';
+  document.getElementById('coopTabAgenda').hidden=v!=='agenda';
+  document.getElementById('coopTabRelatorio').hidden=v!=='relatorio';
+  document.getElementById('coopTabFrota').hidden=v!=='frota';
+  if(v==='agenda')renderAgenda();
+  if(v==='relatorio')gerarRelatorio();
+});
+
+// ---- Fechamento & faturamento (custos CONTRATADOS por fornecedor) ----
+// Cada viagem tem km previsto + (quando fechada) o realizado lançado pelo fornecedor.
+let TRIPS=[
+  {id:'t1',data:'2026-08-28',fornecedorId:'rc',solicitante:'Rafael Nunes',trajeto:'Portaria → Aeroporto Ipatinga',tipoId:'van18',kmPrev:22,dispo:false,fechamento:{kmReal:24,kmInterno:8,horas:1,diaria:0,hosp:0,alim:0,franquia:0}},
+  {id:'t2',data:'2026-08-29',fornecedorId:'rc',solicitante:'Ana Prado',trajeto:'Adm. Central → Cel. Fabriciano',tipoId:'ut4',kmPrev:9,dispo:false,fechamento:{kmReal:9,kmInterno:0,horas:0,diaria:0,hosp:0,alim:0,franquia:50}},
+  {id:'t3',data:'2026-09-01',fornecedorId:'rc',solicitante:'Marcos Vaz',trajeto:'Portaria → Belo Horizonte',tipoId:'van18',kmPrev:212,dispo:true,fechamento:{kmReal:228,kmInterno:60,horas:20,diaria:520,hosp:400,alim:320,franquia:0}},
+  {id:'t4',data:'2026-09-02',fornecedorId:'rc',solicitante:'Juliana Reis',trajeto:'Almoxarifado → Aeroporto Ipatinga',tipoId:'van11',kmPrev:24,dispo:false,fechamento:null},
+  {id:'t7',data:'2026-09-03',fornecedorId:'rc',solicitante:'Sérgio Lima',trajeto:'Portaria → Ipatinga (Centro)',tipoId:'ut4',kmPrev:20,dispo:false,fechamento:null},
+  {id:'t5',data:'2026-09-01',fornecedorId:'royal',solicitante:'Tiago Melo',trajeto:'Capelinha → Governador Valadares',tipoId:'ut4',kmPrev:98,dispo:false,fechamento:{kmReal:104,kmInterno:12,horas:2,diaria:0,hosp:0,alim:70,franquia:0}},
+  {id:'t6',data:'2026-09-02',fornecedorId:'vitoria',solicitante:'Paula Braga',trajeto:'Confins → Belo Horizonte',tipoId:'ut3',kmPrev:40,dispo:false,fechamento:{kmReal:42,kmInterno:5,horas:1,diaria:0,hosp:0,alim:0,franquia:70}}
+];
+// persistência: o lançamento do fornecedor é salvo e visto no interno (transparência mão dupla)
+const LS_TRIPS='viagens.trips';
+(function(){try{const s=localStorage.getItem(LS_TRIPS);if(s)TRIPS=JSON.parse(s);}catch(e){}})();
+function saveTrips(){try{localStorage.setItem(LS_TRIPS,JSON.stringify(TRIPS));}catch(e){}}
+// reamarra as viagens de exemplo aos fornecedores existentes (IDs podem diferir por edições salvas)
+function reconcileTrips(){
+  if(!coopStore.length)return;
+  const ids=coopStore.map(c=>c.id), order=['rc','royal','vitoria','exclusive'];
+  TRIPS.forEach(t=>{
+    if(ids.includes(t.fornecedorId))return;
+    const idx=order.indexOf(t.fornecedorId);
+    t.fornecedorId=(idx>=0&&coopStore[idx])?coopStore[idx].id:coopStore[0].id;
+  });
+}
+const BRL=v=>(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+function nomeTipo(id){const t=tipoVeicStore.find(x=>x.id===id);return t?t.nome:'—';}
+function currentCoopId(){const s=document.getElementById('coopSel');return (s&&s.value)||(coopStore[0]&&coopStore[0].id);}
+// tarifas contratadas do fornecedor p/ um tipo (fallback: zero, se não cadastrado)
+// tarifas CONTRATADAS (só km viagem, km interno, hora parada)
+function custosDo(fornId,tipoId){
+  const f=coopStore.find(c=>c.id===fornId), c=f&&f.custos&&f.custos[tipoId];
+  if(c)return c;
+  return {kmViagem:0,kmInterno:0,horaParada:0};
+}
+function valorViagem(trip){
+  const f=trip.fechamento; if(!f)return {total:0,transp:0,parada:0,diaria:0,hosp:0,alim:0,franq:0};
+  const c=custosDo(trip.fornecedorId,trip.tipoId);
+  // transporte e parada = tarifa contratada × quantidade; demais = valores gastos (R$) lançados
+  const transp=(f.kmReal||0)*c.kmViagem + (f.kmInterno||0)*c.kmInterno;
+  const parada=(f.horas||0)*c.horaParada;
+  const diaria=f.diaria||0, hosp=f.hosp||0, alim=f.alim||0, franq=f.franquia||0;
+  return {total:transp+parada+diaria+hosp+alim+franq,transp,parada,diaria,hosp,alim,franq};
+}
+function gerarRelatorio(){
+  reconcileTrips();
+  const ini=$('relIni').value, fim=$('relFim').value, forn=currentCoopId();
+  const lista=TRIPS.filter(r=>r.fornecedorId===forn&&(!ini||r.data>=ini)&&(!fim||r.data<=fim));
+  let km=0,total=0,fech=0;
+  $('relTbody').innerHTML=lista.map(r=>{
+    const v=valorViagem(r), aberta=!r.fechamento;
+    if(!aberta){km+=r.fechamento.kmReal||0;total+=v.total;fech++;}
+    const fe=r.fechamento||{};
+    const extras=aberta?'—':[fe.horas?`${fe.horas}h parada`:'',fe.diaria?`diária ${BRL(fe.diaria)}`:'',fe.hosp?`hosp. ${BRL(fe.hosp)}`:'',fe.alim?`alim. ${BRL(fe.alim)}`:'',fe.franquia?`franquia ${BRL(fe.franquia)}`:''].filter(Boolean).join(' · ')||'—';
+    const kmCol=aberta?`${r.kmPrev} / <span class="muted">—</span>`:`${r.kmPrev} / <b>${r.fechamento.kmReal}</b>`;
+    return `<tr><td>${r.data.split('-').reverse().join('/')}</td><td>${r.solicitante}${r.dispo?' <span class="badge b-run" style="margin-left:4px">à disposição</span>':''}</td><td>${r.trajeto}</td>
+      <td>${nomeTipo(r.tipoId)}</td><td>${kmCol} km</td><td class="muted">${extras}</td>
+      <td>${aberta?'<span class="badge b-wait">a fechar</span>':`<b>${BRL(v.total)}</b>`}</td>
+      <td class="row-actions"><button class="btn ${aberta?'pri':''} sm" type="button" data-fech="${r.id}">${aberta?'Fechar':'Editar'}</button></td></tr>`;}).join('')
+    || '<tr><td colspan="8" class="muted" style="padding:16px">Nenhuma viagem no período.</td></tr>';
+  $('relQtd').textContent=lista.length; $('relFech').textContent=fech; $('relKm').textContent=km+' km'; $('relTotal').textContent=BRL(total);
+  $('relTbody').querySelectorAll('[data-fech]').forEach(b=>b.onclick=()=>openFech(b.dataset.fech));
+}
+$('btnRelGerar')&&($('btnRelGerar').onclick=gerarRelatorio);
+$('relIni')&&($('relIni').value='2026-08-01'); $('relFim')&&($('relFim').value='2026-09-30');
+
+// ---- Fechamento: fornecedor lança o realizado ----
+let fechId=null;
+function openFech(id){
+  const t=TRIPS.find(x=>x.id===id); if(!t)return; fechId=id;
+  $('fcViagem').value=`${t.solicitante} · ${t.trajeto} · ${nomeTipo(t.tipoId)}`;
+  $('fcKmPrev').value=t.kmPrev;
+  const f=t.fechamento||{};
+  $('fcKmReal').value=f.kmReal!=null?f.kmReal:t.kmPrev;
+  $('fcKmInterno').value=f.kmInterno||0; $('fcHoras').value=f.horas||0;
+  $('fcDiarias').value=f.diaria||0; $('fcHosp').value=f.hosp||0; $('fcAlim').value=f.alim||0; $('fcFranquia').value=f.franquia||0;
+  atualizaResumoFech();
+  $('fechModal').hidden=false;
+}
+function lerFech(){return {kmReal:parseFloat($('fcKmReal').value)||0,kmInterno:parseFloat($('fcKmInterno').value)||0,horas:parseFloat($('fcHoras').value)||0,diaria:parseFloat($('fcDiarias').value)||0,hosp:parseFloat($('fcHosp').value)||0,alim:parseFloat($('fcAlim').value)||0,franquia:parseFloat($('fcFranquia').value)||0};}
+function atualizaResumoFech(){
+  const t=TRIPS.find(x=>x.id===fechId); if(!t)return;
+  const c=custosDo(t.fornecedorId,t.tipoId), f=lerFech();
+  const transp=(f.kmReal||0)*c.kmViagem, interno=(f.kmInterno||0)*c.kmInterno, parada=(f.horas||0)*c.horaParada;
+  const total=transp+interno+parada+f.diaria+f.hosp+f.alim+f.franquia;
+  const semTarifa=!c.kmViagem&&!c.kmInterno&&!c.horaParada;
+  const line=(k,det,val)=>`<div style="display:flex;justify-content:space-between;padding:3px 0"><span>${k}${det?` <span class="muted">${det}</span>`:''}</span><b>${BRL(val)}</b></div>`;
+  $('fcCalc').innerHTML=`<div class="fld-label">Resumo do cálculo</div>
+    <div style="background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:13px">
+      ${line('KM viagem',`${f.kmReal||0} km × ${BRL(c.kmViagem)}`,transp)}
+      ${line('KM trânsito interno',`${f.kmInterno||0} km × ${BRL(c.kmInterno)}`,interno)}
+      ${line('Horas paradas',`${f.horas||0} h × ${BRL(c.horaParada)}`,parada)}
+      ${line('Diária do motorista','',f.diaria)}
+      ${line('Hospedagem / estadia','',f.hosp)}
+      ${line('Alimentação','',f.alim)}
+      ${line('Franquia / outros','',f.franquia)}
+      <div style="display:flex;justify-content:space-between;border-top:2px solid var(--line);margin-top:6px;padding-top:8px"><b>Total</b><b style="font-family:'Barlow';font-size:19px;color:var(--brand)">${BRL(total)}</b></div>
+    </div>
+    ${semTarifa?'<div class="fld-err" style="margin-top:8px">Sem tarifa contratada para este fornecedor/tipo — cadastre em <b>Fornecedores → Custos</b> para calcular o transporte.</div>':''}`;
+  $('fcResumo').innerHTML=`Total do fechamento: <b style="color:var(--brand)">${BRL(total)}</b>`;
+}
+['fcKmReal','fcKmInterno','fcHoras','fcDiarias','fcHosp','fcAlim','fcFranquia'].forEach(id=>{const el=$(id);el&&el.addEventListener('input',atualizaResumoFech);el&&el.addEventListener('change',atualizaResumoFech);});
+function salvarFech(){
+  const t=TRIPS.find(x=>x.id===fechId); if(!t)return;
+  const antigoF=t.fechamento||null, novoF=lerFech();
+  t.fechamento=novoF; saveTrips(); $('fechModal').hidden=true; gerarRelatorio();
+  // reflete no interno (prestação de contas + faturamento)
+  if(typeof gerarPrestacao==='function')gerarPrestacao();
+  if(typeof gerarFaturamento==='function')gerarFaturamento();
+  logAudit('Fechamento de viagem', antigoF?'U':'I', t.id, `${t.solicitante} · ${t.trajeto}`, diffCampos(antigoF,novoF,CAMPOS_FECH));
+  toast('Viagem fechada. Lançamento salvo e visível no interno.','ok');
+}
+$('fechSave')&&($('fechSave').onclick=salvarFech);
+$('fechCancel')&&($('fechCancel').onclick=()=>$('fechModal').hidden=true); $('fechClose')&&($('fechClose').onclick=()=>$('fechModal').hidden=true);
+$('fechModal')&&$('fechModal').addEventListener('mousedown',e=>{if(e.target===$('fechModal'))$('fechModal').hidden=true;});
+
+// =================== COOPERATIVA: Agenda dos motoristas ===================
+const AG_INI=6*60, AG_FIM=20*60, AG_HH=46; // 06:00–20:00, 46px/hora
+function horaMin(hhmm){const[a,b]=hhmm.split(':').map(Number);return a*60+b;}
+function minHora(m){const h=Math.floor(m/60),mm=m%60;return `${String(h).padStart(2,'0')}:${String(mm).padStart(2,'0')}`;}
+// solicitações a alocar (mock com horário/duração/passageiros)
+let agPendentes=[
+  {id:'s1',solicitante:'Rafael Nunes',trajeto:'Portaria → Aeroporto Ipatinga',hora:'08:00',dur:60,pass:2},
+  {id:'s2',solicitante:'Ana Prado',trajeto:'Adm. Central → Cel. Fabriciano',hora:'09:30',dur:40,pass:5},
+  {id:'s3',solicitante:'Marcos Vaz',trajeto:'Portaria → Belo Horizonte',hora:'06:00',dur:210,pass:12},
+  {id:'s4',solicitante:'Juliana Reis',trajeto:'Almoxarifado → Hospital',hora:'14:00',dur:30,pass:1}
+];
+let agAlocacoes=[]; // {solicId, veiculoId, ini, fim, solicitante, trajeto, pass}
+let agBloqueios=[]; // {id, veiculoId, ini, fim, motivo}  -> indisponibilidade
+let agSel=null;     // solicitação selecionada
+function agDrivers(){return frota.filter(v=>v.ativo).map(v=>{const t=tipoVeicStore.find(x=>x.id===v.tipoId);return {veiculoId:v.id,motorista:v.motorista,placa:v.placa,tipoNome:t?t.nome:'—',cap:t?t.capacidade:0};});}
+function agConflito(veiculoId,ini,fim){
+  return agAlocacoes.some(a=>a.veiculoId===veiculoId && ini<a.fim && fim>a.ini)
+      || agBloqueios.some(b=>b.veiculoId===veiculoId && ini<b.fim && fim>b.ini);
+}
+function renderPendentes(){
+  const box=$('agPendentes'); if(!box)return;
+  if(!agPendentes.length){box.innerHTML='<div class="ag-empty">Nada a alocar. 🎉</div>';return;}
+  box.innerHTML=agPendentes.map(s=>`<div class="ag-pend${agSel===s.id?' sel':''}" data-s="${s.id}">
+    <div class="t">${s.solicitante}</div><div class="m">${s.trajeto}</div>
+    <div class="bd"><span class="pill">🕐 ${s.hora}–${minHora(horaMin(s.hora)+s.dur)}</span><span class="pill">👥 ${s.pass} pass.</span></div></div>`).join('');
+  box.querySelectorAll('[data-s]').forEach(el=>el.onclick=()=>{agSel=(agSel===el.dataset.s?null:el.dataset.s);renderPendentes();});
+}
+function renderAgenda(){
+  renderPendentes();
+  const cols=$('agCols'); if(!cols)return;
+  const horas=[];for(let m=AG_INI;m<AG_FIM;m+=60)horas.push(m);
+  const trackH=(AG_FIM-AG_INI)/60*AG_HH;
+  // coluna de horas
+  let html=`<div class="ag-timecol"><div class="ag-colh"><span>Horário</span></div><div class="ag-track" style="height:${trackH}px">`+
+    horas.map(m=>`<div class="ag-time">${minHora(m)}</div>`).join('')+`</div></div>`;
+  // colunas por motorista
+  agDrivers().forEach(d=>{
+    const blocks=agAlocacoes.filter(a=>a.veiculoId===d.veiculoId).map(a=>{
+      const top=(a.ini-AG_INI)/60*AG_HH, h=Math.max(18,(a.fim-a.ini)/60*AG_HH);
+      return `<div class="ag-block" style="top:${top}px;height:${h}px" title="${a.solicitante} · ${a.pass} pass.">
+        <span class="rm" data-rm="${a.solicId}">✕</span><b>${a.solicitante}</b>${minHora(a.ini)}–${minHora(a.fim)} · ${a.pass}p</div>`;
+    }).join('');
+    const bloqs=agBloqueios.filter(b=>b.veiculoId===d.veiculoId).map(b=>{
+      const top=(b.ini-AG_INI)/60*AG_HH, h=Math.max(18,(b.fim-b.ini)/60*AG_HH);
+      return `<div class="ag-block bloq" style="top:${top}px;height:${h}px" title="Indisponível${b.motivo?' · '+b.motivo:''}">
+        <span class="rm" data-rmb="${b.id}">✕</span><b>🔒 Indisponível</b>${minHora(b.ini)}–${minHora(b.fim)}${b.motivo?' · '+b.motivo:''}</div>`;
+    }).join('');
+    html+=`<div class="ag-col" data-veic="${d.veiculoId}"><div class="ag-colh"><button class="ag-lock" data-lock="${d.veiculoId}" title="Indisponibilizar">🔒</button><b>${d.motorista}</b><span>${d.placa} · ${d.tipoNome} (${d.cap})</span></div>
+      <div class="ag-track" style="height:${trackH}px">`+horas.map(()=>`<div class="ag-hour"></div>`).join('')+blocks+bloqs+`</div></div>`;
+  });
+  cols.innerHTML=html;
+  cols.querySelectorAll('.ag-lock').forEach(b=>b.onclick=e=>{e.stopPropagation();abrirBloqueio(b.dataset.lock);});
+  cols.querySelectorAll('.ag-col').forEach(col=>col.onclick=e=>{
+    if(e.target.dataset.rm){desalocar(e.target.dataset.rm);return;}
+    if(e.target.dataset.rmb){removerBloqueio(e.target.dataset.rmb);return;}
+    alocarNaAgenda(col.dataset.veic);
+  });
+}
+// ---- indisponibilidade (bloqueio) ----
+let bloqVeicId=null;
+function abrirBloqueio(veiculoId){
+  bloqVeicId=veiculoId; const d=agDrivers().find(x=>x.veiculoId===veiculoId);
+  $('bqVeic').value=d?`${d.motorista} · ${d.placa} · ${d.tipoNome}`:'';
+  $('bloqModal').hidden=false;
+}
+function salvarBloqueio(){
+  const ini=horaMin($('bqIni').value||'0:0'), fim=horaMin($('bqFim').value||'0:0');
+  if(fim<=ini){toast('O fim deve ser depois do início.','warn');return;}
+  if(agConflito(bloqVeicId,ini,fim)){toast('Já há viagem ou bloqueio nesse horário.','warn',{title:'Conflito'});return;}
+  agBloqueios.push({id:'b'+Date.now(),veiculoId:bloqVeicId,ini,fim,motivo:$('bqMotivo').value.trim()});
+  saveAgenda(); $('bloqModal').hidden=true; renderAgenda(); toast('Veículo indisponibilizado no período.','ok');
+}
+function removerBloqueio(id){agBloqueios=agBloqueios.filter(b=>b.id!==id);saveAgenda();renderAgenda();toast('Bloqueio removido.','info');}
+$('bloqSave').onclick=salvarBloqueio;
+$('bloqCancel').onclick=()=>$('bloqModal').hidden=true; $('bloqClose').onclick=()=>$('bloqModal').hidden=true;
+$('bloqModal').addEventListener('mousedown',e=>{if(e.target===$('bloqModal'))$('bloqModal').hidden=true;});
+function alocarNaAgenda(veiculoId){
+  if(!agSel){toast('Selecione uma solicitação à esquerda primeiro.','warn');return;}
+  const s=agPendentes.find(x=>x.id===agSel); if(!s)return;
+  const d=agDrivers().find(x=>x.veiculoId===veiculoId); if(!d)return;
+  if(d.cap<s.pass){toast(`Veículo de ${d.motorista} comporta ${d.cap}; a viagem tem ${s.pass} passageiros.`,'error',{title:'Capacidade insuficiente'});return;}
+  const ini=horaMin(s.hora), fim=ini+s.dur;
+  if(agConflito(veiculoId,ini,fim)){toast(`${d.motorista} já tem viagem nesse horário.`,'warn',{title:'Conflito de agenda'});return;}
+  agAlocacoes.push({solicId:s.id,veiculoId,ini,fim,solicitante:s.solicitante,trajeto:s.trajeto,pass:s.pass});
+  agPendentes=agPendentes.filter(x=>x.id!==s.id); agSel=null;
+  saveAgenda(); renderAgenda(); toast(`Alocado para ${d.motorista} (${d.placa}).`,'ok');
+}
+function desalocar(solicId){
+  const a=agAlocacoes.find(x=>x.solicId===solicId); if(!a)return;
+  confirmToast('Desfazer esta alocação? A solicitação volta para a fila.',()=>{
+    agAlocacoes=agAlocacoes.filter(x=>x.solicId!==solicId);
+    agPendentes.push({id:a.solicId,solicitante:a.solicitante,trajeto:a.trajeto,hora:minHora(a.ini),dur:a.fim-a.ini,pass:a.pass});
+    saveAgenda(); renderAgenda(); toast('Alocação desfeita.','info');
+  },{title:'Desalocar',yes:'Desfazer'});
+}
+$('agData')&&($('agData').value=new Date().toISOString().slice(0,10));
+
+const LS_FROTA='viagens.frota';
+function loadFrota(){try{const s=localStorage.getItem(LS_FROTA);if(s)return JSON.parse(s);}catch(e){}
+  return [
+    {id:'v1',tipoId:'van18',placa:'MG-3F21',modelo:'Renault Master',motorista:'Pedro Santos',telefone:'(31) 98888-1010',ativo:true},
+    {id:'v2',tipoId:'ut4',placa:'MG-7B45',modelo:'Fiat Doblò',motorista:'Luiz Andrade',telefone:'(31) 97777-2020',ativo:true},
+    {id:'v3',tipoId:'van11',placa:'MG-1C88',modelo:'Mercedes Sprinter',motorista:'Marta Rocha',telefone:'(31) 96666-3030',ativo:true}
+  ];
+}
+function saveFrota(){try{localStorage.setItem(LS_FROTA,JSON.stringify(frota));}catch(e){}}
+let frota=loadFrota();
+function renderFrota(){
+  const tb=$('frotaTbody'); if(!tb)return;
+  tb.innerHTML=frota.map(v=>{
+    const t=tipoVeicStore.find(x=>x.id===v.tipoId);
+    return `<tr>
+    <td><b>${v.modelo||'—'}</b></td><td>${v.placa}</td><td>${t?t.nome:'—'}</td>
+    <td>${t?t.capacidade:'—'} lug.</td>
+    <td>${v.motorista||'—'}</td><td class="muted">${v.telefone||'—'}</td>
+    <td><span class="badge ${v.ativo?'b-ok':'b-wait'}">${v.ativo?'Ativo':'Inativo'}</span></td>
+    <td class="row-actions"><button class="btn sm" type="button" data-veic="${v.id}">Editar</button></td></tr>`;}).join('');
+  tb.querySelectorAll('[data-veic]').forEach(b=>b.onclick=()=>openVeic(b.dataset.veic));
+}
+let veicEditId=null;
+function openVeic(id){
+  veicEditId=id; const v=id?frota.find(x=>x.id===id):null;
+  $('veicModalTitle').textContent=v?'Editar veículo':'Novo veículo';
+  popularTipoVeicSelect($('vfTipo'), v?v.tipoId:(tipoVeicStore[0]&&tipoVeicStore[0].id));
+  $('vfPlaca').value=v?v.placa:''; $('vfModelo').value=v?v.modelo:'';
+  $('vfMotorista').value=v?v.motorista:''; $('vfTelefone').value=v?v.telefone:''; $('vfAtivo').checked=v?v.ativo:true;
+  $('veicDelete').style.visibility=v?'visible':'hidden';
+  $('veicModal').hidden=false;
+}
+function saveVeic(){
+  const placa=$('vfPlaca').value.trim(), motorista=$('vfMotorista').value.trim();
+  if(!placa){toast('Informe a placa.','warn');return;}
+  if(!motorista){toast('Informe o motorista.','warn');return;}
+  const antigoV=veicEditId?frota.find(x=>x.id===veicEditId):null;
+  const obj={id:veicEditId||('v'+Date.now()),tipoId:$('vfTipo').value,placa,modelo:$('vfModelo').value.trim(),motorista,telefone:$('vfTelefone').value.trim(),ativo:$('vfAtivo').checked};
+  if(veicEditId){const i=frota.findIndex(x=>x.id===veicEditId);frota[i]=obj;}else frota.push(obj);
+  saveFrota(); renderFrota(); $('veicModal').hidden=true;
+  logAudit('Veículo', antigoV?'U':'I', obj.id, obj.placa, diffCampos(antigoV,obj,CAMPOS_VEIC));
+  toast(`Veículo ${placa} salvo.`,'ok');
+}
+function deleteVeic(){
+  if(!veicEditId)return; const v=frota.find(x=>x.id===veicEditId);
+  confirmToast(`Excluir o veículo ${v?v.placa:''}?`,()=>{logAudit('Veículo','D',veicEditId,v?v.placa:'',[]);frota=frota.filter(x=>x.id!==veicEditId);saveFrota();renderFrota();$('veicModal').hidden=true;toast('Veículo excluído.','info');},{title:'Excluir veículo',yes:'Excluir',type:'error'});
+}
+$('btnNovoVeiculo').onclick=()=>openVeic(null);
+$('veicSave').onclick=saveVeic; $('veicDelete').onclick=deleteVeic;
+$('veicCancel').onclick=()=>$('veicModal').hidden=true; $('veicClose').onclick=()=>$('veicModal').hidden=true;
+$('veicModal').addEventListener('mousedown',e=>{if(e.target===$('veicModal'))$('veicModal').hidden=true;});
+renderFrota();
+
+// alocação de veículo a uma viagem aprovada
+let alocRow=null;
+function veiculoCap(v){const t=tipoVeicStore.find(x=>x.id===v.tipoId);return t?t.capacidade:0;}
+function alocarModal(btn){
+  alocRow=btn.closest('tr');
+  const solic=alocRow.querySelector('td b')?.textContent||'', traj=alocRow.querySelector('.rota')?.textContent.replace(/\s+/g,' ').trim()||'';
+  const pass=parseInt(alocRow.dataset.pass)||1;
+  $('alocViagem').value=`${solic} · ${traj} · ${pass} passageiro(s)`;
+  const cabem=frota.filter(v=>v.ativo && veiculoCap(v)>=pass);
+  $('alocVeic').innerHTML=cabem.length
+    ? cabem.map(v=>`<option value="${v.id}">${v.placa} · ${tipoVeicNome(v.tipoId)} (${veiculoCap(v)}) — ${v.motorista}</option>`).join('')
+    : `<option value="">Nenhum veículo comporta ${pass} passageiros</option>`;
+  $('alocModal').hidden=false;
+}
+function confirmAloc(){
+  const id=$('alocVeic').value; const v=frota.find(x=>x.id===id);
+  if(!v){toast('Nenhum veículo disponível. Cadastre na aba Veículos & motoristas.','warn');return;}
+  const statusCell=alocRow.children[4], actCell=alocRow.children[5];
+  statusCell.innerHTML=`<span class="badge b-run">Veículo ${v.placa} · Motorista ${v.motorista}</span>`;
+  actCell.innerHTML='<button class="btn sm" type="button">Acompanhar</button>';
+  $('alocModal').hidden=true; toast(`Veículo ${v.placa} alocado.`,'ok');
+}
+$('alocConfirm').onclick=confirmAloc;
+$('alocCancel').onclick=()=>$('alocModal').hidden=true; $('alocClose').onclick=()=>$('alocModal').hidden=true;
+$('alocModal').addEventListener('mousedown',e=>{if(e.target===$('alocModal'))$('alocModal').hidden=true;});
+
+// =================== ADMIN: Tipos de veículo ===================
+function renderTiposVeic(){
+  const tb=$('tiposVeicTbody'); if(!tb)return;
+  const ord=[...tipoVeicStore].sort((a,b)=>a.capacidade-b.capacidade);
+  tb.innerHTML=ord.map(t=>`<tr><td><b>${t.nome}</b></td><td>${t.capacidade} passageiros</td>
+    <td class="row-actions"><button class="btn sm" type="button" data-tv="${t.id}">Editar</button></td></tr>`).join('');
+  tb.querySelectorAll('[data-tv]').forEach(b=>b.onclick=()=>openTipoVeic(b.dataset.tv));
+}
+function refreshTiposVeicDependentes(){
+  popularTipoVeicSelect(fTipoVeic, fTipoVeic.value);
+  renderFrota(); atualizaBtnPass();
+}
+let tvEditId=null;
+function openTipoVeic(id){
+  tvEditId=id; const t=id?tipoVeicStore.find(x=>x.id===id):null;
+  $('tipoVeicModalTitle').textContent=t?'Editar tipo de veículo':'Novo tipo de veículo';
+  $('tvNome').value=t?t.nome:''; $('tvCap').value=t?t.capacidade:'';
+  $('tipoVeicDelete').style.visibility=t?'visible':'hidden';
+  $('tipoVeicModal').hidden=false;
+}
+function saveTipoVeic(){
+  const nome=$('tvNome').value.trim(), cap=parseInt($('tvCap').value);
+  if(!nome){toast('Informe o nome do tipo.','warn');return;}
+  if(!cap||cap<1){toast('Informe a capacidade (passageiros).','warn');return;}
+  const antigoTV=tvEditId?tipoVeicStore.find(x=>x.id===tvEditId):null;
+  const obj={id:tvEditId||('tv'+Date.now()),nome,capacidade:cap};
+  if(tvEditId){const i=tipoVeicStore.findIndex(x=>x.id===tvEditId);tipoVeicStore[i]=obj;}else tipoVeicStore.push(obj);
+  saveTiposVeic(); renderTiposVeic(); refreshTiposVeicDependentes(); $('tipoVeicModal').hidden=true;
+  logAudit('Tipo de veículo', antigoTV?'U':'I', obj.id, obj.nome, diffCampos(antigoTV,obj,CAMPOS_TV));
+  toast(`Tipo "${nome}" salvo.`,'ok');
+}
+function deleteTipoVeic(){
+  if(!tvEditId)return; const t=tipoVeicStore.find(x=>x.id===tvEditId);
+  confirmToast(`Excluir o tipo "${t?t.nome:''}"?`,()=>{logAudit('Tipo de veículo','D',tvEditId,t?t.nome:'',[]);tipoVeicStore=tipoVeicStore.filter(x=>x.id!==tvEditId);saveTiposVeic();renderTiposVeic();refreshTiposVeicDependentes();$('tipoVeicModal').hidden=true;toast('Tipo excluído.','info');},{title:'Excluir tipo de veículo',yes:'Excluir',type:'error'});
+}
+$('btnNovoTipoVeic')&&($('btnNovoTipoVeic').onclick=()=>openTipoVeic(null));
+$('tipoVeicSave').onclick=saveTipoVeic; $('tipoVeicDelete').onclick=deleteTipoVeic;
+$('tipoVeicCancel').onclick=()=>$('tipoVeicModal').hidden=true; $('tipoVeicClose').onclick=()=>$('tipoVeicModal').hidden=true;
+$('tipoVeicModal').addEventListener('mousedown',e=>{if(e.target===$('tipoVeicModal'))$('tipoVeicModal').hidden=true;});
+$('btnResetTiposVeic')&&($('btnResetTiposVeic').onclick=()=>{confirmToast('Restaurar os tipos de veículo padrão?',()=>{try{localStorage.removeItem(LS_TIPOSVEIC);}catch(e){}tipoVeicStore=JSON.parse(JSON.stringify(window.DB_TIPOS_VEICULO||[]));renderTiposVeic();refreshTiposVeicDependentes();toast('Tipos restaurados.','ok');},{title:'Restaurar padrão',yes:'Restaurar'});});
+renderTiposVeic();
+
+// =================== ADMIN: Faturamento por fornecedor (discriminado) ===================
+function gerarFaturamento(){
+  reconcileTrips();
+  const ini=$('fatIni').value, fim=$('fatFim').value;
+  const G={transp:0,parada:0,diaria:0,hosp:0,alim:0};
+  let gTotal=0;
+  $('fatTbody').innerHTML=coopStore.map(c=>{
+    const lista=TRIPS.filter(t=>t.fornecedorId===c.id&&t.fechamento&&(!ini||t.data>=ini)&&(!fim||t.data<=fim));
+    let km=0,transp=0,parada=0,diaria=0,hosp=0,alim=0,tot=0;
+    lista.forEach(t=>{const v=valorViagem(t);km+=t.fechamento.kmReal||0;transp+=v.transp;parada+=v.parada;diaria+=v.diaria;hosp+=v.hosp;alim+=v.alim;tot+=v.total;});
+    G.transp+=transp;G.parada+=parada;G.diaria+=diaria;G.hosp+=hosp;G.alim+=alim;gTotal+=tot;
+    return `<tr><td><span class="color-dot" style="background:${c.cor}"></span><b>${c.nome}</b></td>
+      <td>${lista.length}</td><td>${km} km</td><td>${BRL(transp)}</td><td>${BRL(parada)}</td><td>${BRL(diaria)}</td><td>${BRL(hosp)}</td><td>${BRL(alim)}</td><td><b>${BRL(tot)}</b></td></tr>`;
+  }).join('');
+  $('fatTransp').textContent=BRL(G.transp); $('fatParada').textContent=BRL(G.parada);
+  $('fatDiaria').textContent=BRL(G.diaria); $('fatHosp').textContent=BRL(G.hosp);
+  $('fatAlim').textContent=BRL(G.alim); $('fatTotal').textContent=BRL(gTotal);
+}
+$('btnFatGerar')&&($('btnFatGerar').onclick=gerarFaturamento);
+$('fatIni')&&($('fatIni').value='2026-08-01'); $('fatFim')&&($('fatFim').value='2026-09-30');
+// gera quando abrir o painel
+document.querySelector('[data-panel="pFaturamento"]')&&(document.querySelector('[data-panel="pFaturamento"]').addEventListener('click',()=>setTimeout(gerarFaturamento,20)));
+
+// =================== ADMIN: Prestação de contas (transparente com o fornecedor) ===================
+function nomeForn(id){const c=coopStore.find(x=>x.id===id);return c?c.nome:id;}
+function popularPcForn(){const s=$('pcForn');if(!s)return;const cur=s.value;
+  s.innerHTML='<option value="">Todos os fornecedores</option>'+coopStore.map(c=>`<option value="${c.id}">${c.nome}</option>`).join('');
+  if(cur)s.value=cur;}
+function gerarPrestacao(){
+  if(!$('pcTbody'))return; reconcileTrips(); popularPcForn();
+  const forn=$('pcForn').value, ini=$('pcIni').value, fim=$('pcFim').value;
+  const lista=TRIPS.filter(t=>(!forn||t.fornecedorId===forn)&&(!ini||t.data>=ini)&&(!fim||t.data<=fim));
+  let fech=0,pend=0,total=0;
+  $('pcTbody').innerHTML=lista.map(t=>{
+    const aberta=!t.fechamento, v=valorViagem(t); if(aberta)pend++;else{fech++;total+=v.total;}
+    const kmc=aberta?`${t.kmPrev} / —`:`${t.kmPrev} / <b>${t.fechamento.kmReal}</b>`;
+    return `<tr><td>${t.data.split('-').reverse().join('/')}</td><td><b>${nomeForn(t.fornecedorId)}</b></td><td>${t.solicitante}${t.dispo?' <span class="badge b-run" style="margin-left:4px">à disp.</span>':''}</td><td>${t.trajeto}</td><td>${nomeTipo(t.tipoId)}</td><td>${kmc} km</td>
+      <td>${aberta?'<span class="badge b-wait">Pendente</span>':'<span class="badge b-ok">Fechada</span>'}</td>
+      <td>${aberta?'—':`<b>${BRL(v.total)}</b>`}</td>
+      <td class="row-actions"><button class="btn sm" type="button" data-pc="${t.id}"${aberta?' disabled':''}>Ver</button></td></tr>`;
+  }).join('')||'<tr><td colspan="9" class="muted" style="padding:16px">Nenhuma viagem no período.</td></tr>';
+  $('pcQtd').textContent=lista.length; $('pcFech').textContent=fech; $('pcPend').textContent=pend; $('pcTotal').textContent=BRL(total);
+  $('pcTbody').querySelectorAll('[data-pc]').forEach(b=>{if(!b.disabled)b.onclick=()=>verContas(b.dataset.pc);});
+}
+function verContas(id){
+  const t=TRIPS.find(x=>x.id===id); if(!t||!t.fechamento)return;
+  const c=custosDo(t.fornecedorId,t.tipoId), f=t.fechamento, v=valorViagem(t);
+  $('contasTitle').textContent='Prestação de contas — '+t.solicitante;
+  const row=(k,det,val)=>`<tr><td><b>${k}</b></td><td class="muted">${det}</td><td style="text-align:right"><b>${BRL(val)}</b></td></tr>`;
+  $('contasBody').innerHTML=`
+    <div class="muted" style="margin-bottom:12px">${nomeForn(t.fornecedorId)} · ${t.trajeto} · ${nomeTipo(t.tipoId)} · ${t.data.split('-').reverse().join('/')}${t.dispo?' · 🚗 motorista à disposição':''}</div>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>Item</th><th>Lançado pelo fornecedor</th><th style="text-align:right">Valor</th></tr></thead>
+      <tbody>
+        ${row('KM viagem',`${f.kmReal} km × ${BRL(c.kmViagem)}`,(f.kmReal||0)*c.kmViagem)}
+        ${row('KM trânsito interno',`${f.kmInterno} km × ${BRL(c.kmInterno)}`,(f.kmInterno||0)*c.kmInterno)}
+        ${row('Horas paradas',`${f.horas} h × ${BRL(c.horaParada)}`,(f.horas||0)*c.horaParada)}
+        ${row('Diária do motorista','valor gasto lançado',f.diaria||0)}
+        ${row('Hospedagem / estadia','valor gasto lançado',f.hosp||0)}
+        ${row('Alimentação','valor gasto lançado',f.alim||0)}
+        ${row('Franquia / outros','valor gasto lançado',f.franquia||0)}
+      </tbody>
+    </table></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:12px;border-top:2px solid var(--line)">
+      <span class="muted">Previsto ${t.kmPrev} km · Realizado ${f.kmReal} km</span>
+      <span style="font-family:'Barlow';font-size:22px;font-weight:700;color:var(--brand)">Total ${BRL(v.total)}</span>
+    </div>`;
+  $('contasModal').hidden=false;
+}
+$('contasClose')&&($('contasClose').onclick=()=>$('contasModal').hidden=true); $('contasFechar')&&($('contasFechar').onclick=()=>$('contasModal').hidden=true);
+$('contasModal')&&$('contasModal').addEventListener('mousedown',e=>{if(e.target===$('contasModal'))$('contasModal').hidden=true;});
+$('btnPcGerar')&&($('btnPcGerar').onclick=gerarPrestacao); $('pcForn')&&($('pcForn').addEventListener('change',gerarPrestacao));
+$('pcIni')&&($('pcIni').value='2026-08-01'); $('pcFim')&&($('pcFim').value='2026-09-30');
+document.querySelector('[data-panel="pPrestacao"]')&&document.querySelector('[data-panel="pPrestacao"]').addEventListener('click',()=>setTimeout(gerarPrestacao,20));
+popularPcForn();
+
+// =================== Dados / backup (localStorage + export/import) ===================
+const LS_AGENDA='viagens.agenda';
+function saveAgenda(){try{localStorage.setItem(LS_AGENDA,JSON.stringify({alocacoes:agAlocacoes,bloqueios:agBloqueios,pendentes:agPendentes}));}catch(e){}}
+(function loadAgenda(){try{const s=localStorage.getItem(LS_AGENDA);if(s){const d=JSON.parse(s);agAlocacoes=d.alocacoes||agAlocacoes;agBloqueios=d.bloqueios||agBloqueios;if(d.pendentes)agPendentes=d.pendentes;}}catch(e){}})();
+function baixarJSON(nome,obj){const blob=new Blob([JSON.stringify(obj,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=nome;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1500);}
+function exportarDados(){
+  baixarJSON('dados-viagens.json',{
+    cooperativas:coopStore, tiposVeiculo:tipoVeicStore, delegacoes:delegStore,
+    veiculos:frota, viagens:TRIPS, agenda:{alocacoes:agAlocacoes,bloqueios:agBloqueios,pendentes:agPendentes},
+    exportadoEm:new Date().toISOString()
+  });
+  toast('Dados exportados (dados-viagens.json).','ok');
+}
+function exportarDb(){
+  baixarJSON('cooperativas.json',coopStore);
+  baixarJSON('tipos-veiculo.json',tipoVeicStore);
+  baixarJSON('delegacoes.json',delegStore);
+  baixarJSON('veiculos.json',frota);
+  baixarJSON('viagens.json',TRIPS);
+  toast('Arquivos de cadastro baixados.','ok');
+}
+function importarDados(file){
+  const r=new FileReader();
+  r.onload=()=>{try{
+    const d=JSON.parse(r.result);
+    if(d.cooperativas){coopStore=d.cooperativas;saveCoopStore();}
+    if(d.tiposVeiculo){tipoVeicStore=d.tiposVeiculo;saveTiposVeic();}
+    if(d.delegacoes){delegStore=d.delegacoes;saveDelegStore();}
+    if(d.veiculos){frota=d.veiculos;saveFrota();}
+    if(d.viagens){TRIPS=d.viagens;saveTrips();}
+    if(d.agenda){agAlocacoes=d.agenda.alocacoes||[];agBloqueios=d.agenda.bloqueios||[];if(d.agenda.pendentes)agPendentes=d.agenda.pendentes;saveAgenda();}
+    renderCoopTable();renderTiposVeic();renderFrota();refreshTiposVeicDependentes();
+    if(typeof renderDeleg==='function')renderDeleg(); if(typeof gerarPrestacao==='function')gerarPrestacao();
+    toast('Dados importados com sucesso.','ok');
+  }catch(e){toast('Arquivo inválido.','error');}};
+  r.readAsText(file);
+}
+$('btnExportar')&&($('btnExportar').onclick=exportarDados);
+$('btnExportarDb')&&($('btnExportarDb').onclick=exportarDb);
+$('btnImportar')&&($('btnImportar').onclick=()=>$('fileImportar').click());
+$('fileImportar')&&($('fileImportar').onchange=e=>{if(e.target.files[0])importarDados(e.target.files[0]);e.target.value='';});
+$('btnLimparDados')&&($('btnLimparDados').onclick=()=>confirmToast('Limpar todos os dados locais e voltar ao padrão?',()=>{
+  ['viagens.cooperativas','viagens.tiposVeiculo','viagens.frota','viagens.delegacoes','viagens.trips',LS_AGENDA].forEach(k=>{try{localStorage.removeItem(k);}catch(e){}});
+  location.reload();
+},{title:'Limpar dados',yes:'Limpar',type:'error'}));
+
+// =================== ADMIN: Delegações de aprovação ===================
+const LS_DELEG='viagens.delegacoes';
+function loadDeleg(){try{const s=localStorage.getItem(LS_DELEG);if(s)return JSON.parse(s);}catch(e){}return JSON.parse(JSON.stringify(window.DB_DELEGACOES||[]));}
+function saveDelegStore(){try{localStorage.setItem(LS_DELEG,JSON.stringify(delegStore));}catch(e){}}
+let delegStore=loadDeleg();
+const HOJE='2026-09-03';
+// delegação manual vigente para um nível (mandatória sobre o SAP)
+function delegAtivaPara(nivel){return delegStore.find(d=>d.ativo&&Number(d.nivel)===Number(nivel)&&(!d.inicio||d.inicio<=HOJE)&&(!d.fim||d.fim>=HOJE))||null;}
+function statusDeleg(d){const at=d.ativo&&(!d.fim||d.fim>=HOJE)&&(!d.inicio||d.inicio<=HOJE);return at?'<span class="badge b-ok">Vigente</span>':'<span class="badge b-wait">Inativa</span>';}
+function renderDeleg(){
+  const tb=$('delegTbody'); if(!tb)return;
+  if(!delegStore.length){tb.innerHTML='<tr><td colspan="7" class="muted" style="padding:16px">Nenhuma delegação cadastrada.</td></tr>';return;}
+  tb.innerHTML=delegStore.map(d=>`<tr>
+    <td><b>${NIVEL_LABEL[d.nivel]||('Nível '+d.nivel)}</b></td><td>${d.deQuem||'—'}</td><td>${d.paraQuem||'—'}</td>
+    <td class="muted">${(d.inicio||'—')} a ${(d.fim||'—')}</td><td class="muted">${d.motivo||'—'}</td>
+    <td>${statusDeleg(d)}</td>
+    <td class="row-actions"><button class="btn sm" data-deleg="${d.id}">Editar</button></td></tr>`).join('');
+  tb.querySelectorAll('[data-deleg]').forEach(b=>b.onclick=()=>openDeleg(b.dataset.deleg));
+}
+let delegEditId=null;
+function openDeleg(id){
+  delegEditId=id; const d=id?delegStore.find(x=>x.id===id):null;
+  $('delegMTitle').textContent=d?'Editar delegação':'Nova delegação';
+  $('dgNivel').value=d?String(d.nivel):'2'; $('dgDe').value=d?(d.deQuem||''):''; $('dgPara').value=d?(d.paraQuem||''):'';
+  $('dgIni').value=d?(d.inicio||''):''; $('dgFim').value=d?(d.fim||''):''; $('dgMotivo').value=d?(d.motivo||''):'';
+  $('dgAtivo').checked=d?!!d.ativo:true;
+  $('delegDelete').style.visibility=d?'visible':'hidden';
+  $('delegModal').hidden=false;
+}
+function saveDeleg(){
+  const para=$('dgPara').value.trim();
+  if(!para){toast('Informe para quem a aprovação será delegada.','warn');return;}
+  const antigoD=delegEditId?delegStore.find(x=>x.id===delegEditId):null;
+  const obj={id:delegEditId||('del'+Date.now()),nivel:parseInt($('dgNivel').value),deQuem:$('dgDe').value.trim(),paraQuem:para,inicio:$('dgIni').value||null,fim:$('dgFim').value||null,motivo:$('dgMotivo').value.trim(),ativo:$('dgAtivo').checked};
+  if(delegEditId){const i=delegStore.findIndex(x=>x.id===delegEditId);delegStore[i]=obj;}else delegStore.push(obj);
+  saveDelegStore(); renderDeleg(); renderAprovacao(); $('delegModal').hidden=true;
+  logAudit('Delegação', antigoD?'U':'I', obj.id, `${obj.deQuem||'—'} → ${obj.paraQuem}`, diffCampos(antigoD,obj,CAMPOS_DEL));
+  toast('Delegação salva.','ok');
+}
+function deleteDeleg(){
+  if(!delegEditId)return; const dAlvo=delegStore.find(x=>x.id===delegEditId); confirmToast('Excluir esta delegação?',()=>{logAudit('Delegação','D',delegEditId,dAlvo?`${dAlvo.deQuem||'—'} → ${dAlvo.paraQuem}`:'',[]);delegStore=delegStore.filter(x=>x.id!==delegEditId);saveDelegStore();renderDeleg();renderAprovacao();$('delegModal').hidden=true;toast('Delegação excluída.','info');},{title:'Excluir delegação',yes:'Excluir',type:'error'});
+}
+$('btnNovaDeleg')&&($('btnNovaDeleg').onclick=()=>openDeleg(null));
+$('delegSave')&&($('delegSave').onclick=saveDeleg); $('delegDelete')&&($('delegDelete').onclick=deleteDeleg);
+$('delegCancel')&&($('delegCancel').onclick=()=>$('delegModal').hidden=true); $('delegClose')&&($('delegClose').onclick=()=>$('delegModal').hidden=true);
+$('delegModal')&&$('delegModal').addEventListener('mousedown',e=>{if(e.target===$('delegModal'))$('delegModal').hidden=true;});
+$('btnResetDeleg')&&($('btnResetDeleg').onclick=()=>{try{localStorage.removeItem(LS_DELEG);}catch(e){}delegStore=JSON.parse(JSON.stringify(window.DB_DELEGACOES||[]));renderDeleg();renderAprovacao();toast('Delegações restauradas.','ok');});
+renderDeleg();
+
+// =================== ADMIN: Custos contratados por fornecedor ===================
+let custosFornId=null;
+function openCustos(id){
+  const f=coopStore.find(c=>c.id===id); if(!f)return; custosFornId=id; f.custos=f.custos||{};
+  $('custosMTitle').textContent='Custos contratados — '+f.nome;
+  $('custosTbody').innerHTML=tipoVeicStore.map(t=>{
+    const c=f.custos[t.id]||{};
+    const cell=k=>`<td><input data-tipo="${t.id}" data-k="${k}" type="number" min="0" step="0.01" value="${c[k]!=null?c[k]:''}" style="width:82px;padding:6px 8px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit"></td>`;
+    return `<tr><td><b>${t.nome}</b><br><span class="muted">${t.capacidade} pass.</span></td>${cell('kmViagem')}${cell('kmInterno')}${cell('horaParada')}</tr>`;
+  }).join('');
+  $('custosModal').hidden=false;
+}
+function saveCustos(){
+  const f=coopStore.find(c=>c.id===custosFornId); if(!f)return; const novo={};
+  const antigoC=f.custos||{};
+  $('custosTbody').querySelectorAll('input[data-tipo]').forEach(inp=>{const t=inp.dataset.tipo,k=inp.dataset.k,v=parseFloat(inp.value);novo[t]=novo[t]||{};novo[t][k]=isNaN(v)?0:v;});
+  f.custos=novo; saveCoopStore(); $('custosModal').hidden=true;
+  const labels={kmViagem:'Km viagem',kmInterno:'Km interno',horaParada:'Hora parada'};
+  const mud=[];
+  tipoVeicStore.forEach(t=>{const a=antigoC[t.id]||{},b=novo[t.id]||{};Object.entries(labels).forEach(([k,l])=>{if(fmtA(a[k])!==fmtA(b[k]))mud.push({campo:`${t.nome} · ${l}`,de:fmtA(a[k]),para:fmtA(b[k])});});});
+  logAudit('Tarifas do fornecedor','U',f.id,f.nome,mud);
+  toast(`Custos de ${f.nome} salvos.`,'ok');
+}
+$('custosSave')&&($('custosSave').onclick=saveCustos);
+$('custosCancel')&&($('custosCancel').onclick=()=>$('custosModal').hidden=true); $('custosClose')&&($('custosClose').onclick=()=>$('custosModal').hidden=true);
+$('custosModal')&&$('custosModal').addEventListener('mousedown',e=>{if(e.target===$('custosModal'))$('custosModal').hidden=true;});
+
+// =================== APROVADOR: modal de detalhes + decisão ===================
+let aprRowEl=null;
+function aprDetalhe(btn){
+  const tr=btn.closest('tr'); aprRowEl=tr;
+  let d={}; try{d=JSON.parse(tr.dataset.json||'{}');}catch(e){}
+  $('aprMTitle').textContent='Viagem de '+(d.solicitante||'');
+  const par=(d.paradas&&d.paradas.length)?d.paradas.map(p=>`<li>${p}</li>`).join(''):'<li class="muted">sem paradas</li>';
+  const prog=(d.progresso||[]).map(p=>`<span class="wf-step"><span class="n" style="background:${p.st==='aprovou'?'var(--ok)':'var(--warn)'}">${p.st==='aprovou'?'✓':'•'}</span> ${p.quem} · ${p.st}</span>`).join('<span class="wf-arw">→</span>');
+  $('aprMBody').innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <div><div class="fld-label">Viajante</div>${d.viajante||d.solicitante||''}</div>
+      <div><div class="fld-label">Quando</div>${d.quando||''} · ${d.dist||''}</div>
+      <div style="grid-column:1/-1"><div class="fld-label">Origem</div>${d.origem||''}</div>
+      <div style="grid-column:1/-1"><div class="fld-label">Destino</div>${d.destino||''}</div>
+      <div style="grid-column:1/-1"><div class="fld-label">Paradas</div><ul style="margin:4px 0 0;padding-left:18px">${par}</ul></div>
+      <div><div class="fld-label">Passageiros</div>${d.pass||1} — ${(d.passageiros||[]).join(', ')}</div>
+      <div><div class="fld-label">Fornecedor</div>${d.fornecedor||''} <span class="muted">(não alterável na aprovação)</span></div>
+      <div style="grid-column:1/-1"><div class="fld-label">Motivo</div>${d.motivo||''}</div>
+      <div style="grid-column:1/-1"><div class="fld-label">Observação</div>${d.obs||'—'}</div>
+      <div><div class="fld-label">Pagamento</div>${d.pagamento||''}</div>
+      ${d.dispo?'<div><div class="fld-label">Modalidade</div>🚗 Motorista à disposição</div>':''}
+      <div style="grid-column:1/-1"><div class="fld-label">Andamento da aprovação</div><div class="wf-chain">${prog||'<span class="muted">Você é o único aprovador.</span>'}</div></div>
+    </div>`;
+  $('aprModal').hidden=false;
+}
+function aprDecidir(elOrBtn,ok){
+  const tr=elOrBtn?elOrBtn.closest('tr'):aprRowEl; if(!tr)return;
+  const nome=tr.querySelector('td b')?.textContent||'viagem';
+  const stCell=tr.querySelector('td:nth-child(6)');
+  if(ok){if(stCell)stCell.innerHTML='<span class="badge b-ok">Aprovada</span>';toast(`Viagem de ${nome} aprovada. Segue para o fornecedor.`,'ok');}
+  else{if(stCell)stCell.innerHTML='<span class="badge b-crit">Reprovada</span>';toast(`Viagem de ${nome} reprovada. Devolvida ao solicitante.`,'info');}
+  const act=tr.querySelector('.row-actions'); if(act)act.innerHTML='<button class="btn sm" type="button" onclick="aprDetalhe(this)">Detalhes</button>';
+  $('aprModal').hidden=true;
+}
+$('aprMAprovar')&&($('aprMAprovar').onclick=()=>aprDecidir(null,true));
+$('aprMReprovar')&&($('aprMReprovar').onclick=()=>aprDecidir(null,false));
+$('aprClose')&&($('aprClose').onclick=()=>$('aprModal').hidden=true); $('aprMFechar')&&($('aprMFechar').onclick=()=>$('aprModal').hidden=true);
+$('aprModal')&&$('aprModal').addEventListener('mousedown',e=>{if(e.target===$('aprModal'))$('aprModal').hidden=true;});
+
+// =================== SOLICITAÇÃO: motorista à disposição ===================
+(function(){const cb=$('fDispo');if(cb)cb.addEventListener('change',()=>{$('dispoRow').classList.toggle('show',cb.checked);});})();
+
+// =================== PARÂMETROS: preview de alertas ===================
+function renderAlertaPreview(){
+  if(!$('pAlertaInicio'))return;
+  const ini=Math.max(1,parseInt($('pAlertaInicio').value)||4), itv=Math.max(1,parseInt($('pAlertaIntervalo').value)||1);
+  const marcos=[]; for(let h=ini;h>=1;h-=itv)marcos.push(h);
+  $('alertaPreview').innerHTML='<div class="fld-label">Simulação</div><div class="wf-chain">'+
+    marcos.map(h=>`<span class="wf-step">⏰ faltam ${h}h — avisa solicitante + aprovador</span>`).join('<span class="wf-arw">→</span>')+
+    '<span class="wf-arw">→</span><span class="wf-step">🚫 embarque — sem liberação automática</span></div>';
+}
+if($('pAlertaInicio')){$('pAlertaInicio').value=(PARAMS.alertaInicioHoras||4);$('pAlertaIntervalo').value=(PARAMS.alertaIntervaloHoras||1);}
+['pAlertaInicio','pAlertaIntervalo'].forEach(id=>{const el=$(id);el&&el.addEventListener('input',renderAlertaPreview);});
+$('btnSalvarAlerta')&&($('btnSalvarAlerta').onclick=()=>toast('Política de alertas salva.','ok'));
+renderAlertaPreview();
+
+// =================== ADMIN: Auditoria de dados ===================
+// Registra quem/quando/tabela/registro + mudanças campo a campo (de → para).
+const LS_AUDIT='viagens.auditoria';
+function loadAudit(){try{const s=localStorage.getItem(LS_AUDIT);if(s)return JSON.parse(s);}catch(e){}return [];}
+function saveAudit(){try{localStorage.setItem(LS_AUDIT,JSON.stringify(auditStore.slice(0,500)));}catch(e){}}
+let auditStore=loadAudit();
+function currentUserName(){
+  const p=document.querySelector('.persona.active')?.dataset.view;
+  if(p==='coop'){const c=coopStore.find(x=>x.id===document.getElementById('coopSel')?.value);return (c?c.nome:'Fornecedor')+' · fornecedor';}
+  if(p==='admin')return internalRole==='admin'?'Admin · Logística':internalRole==='aprovador'?'Marina Coelho · aprovador':'Rafael Nunes · solicitante';
+  return 'Rafael Nunes · solicitante';
+}
+function fmtA(v){if(v===undefined||v===null||v==='')return '—';if(typeof v==='object')return JSON.stringify(v);if(typeof v==='boolean')return v?'sim':'não';return String(v);}
+function diffCampos(antes,depois,campos){const ch=[];Object.entries(campos).forEach(([k,label])=>{const a=antes?antes[k]:undefined,b=depois?depois[k]:undefined;if(fmtA(a)!==fmtA(b))ch.push({campo:label,de:fmtA(a),para:fmtA(b)});});return ch;}
+function logAudit(tabela,operacao,registroId,registro,mudancas){
+  auditStore.unshift({id:'a'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),quando:new Date().toISOString(),quem:currentUserName(),tabela,operacao,registroId:String(registroId),registro,mudancas:mudancas||[]});
+  saveAudit(); if(typeof renderAuditoria==='function')renderAuditoria();
+}
+const CAMPOS_FORN={nome:'Nome',cnpj:'CNPJ',email:'E-mail',cidadeBase:'Cidade base',raioKm:'Raio (km)',prioridade:'Prioridade',ativo:'Ativo'};
+const CAMPOS_TV={nome:'Nome',capacidade:'Capacidade'};
+const CAMPOS_DEL={nivel:'Nível',deQuem:'De',paraQuem:'Para',inicio:'Início',fim:'Fim',motivo:'Motivo',ativo:'Ativo'};
+const CAMPOS_VEIC={placa:'Placa',modelo:'Modelo',tipoId:'Tipo',motorista:'Motorista',telefone:'Telefone',ativo:'Ativo'};
+const CAMPOS_FECH={kmReal:'KM realizado',kmInterno:'KM interno',horas:'Horas paradas',diaria:'Diária',hosp:'Hospedagem',alim:'Alimentação',franquia:'Franquia'};
+const OP_LABEL={I:'<span class="badge b-ok">inclusão</span>',U:'<span class="badge b-run">alteração</span>',D:'<span class="badge b-crit">exclusão</span>'};
+function popularAudTabela(){const s=$('audTabela');if(!s)return;const cur=s.value;const tabelas=[...new Set(auditStore.map(a=>a.tabela))].sort();s.innerHTML='<option value="">Todas as tabelas</option>'+tabelas.map(t=>`<option value="${t}">${t}</option>`).join('');if(cur)s.value=cur;}
+function renderAuditoria(){
+  const tb=$('audTbody');if(!tb)return;popularAudTabela();
+  const ft=$('audTabela').value, q=($('audBusca').value||'').toLowerCase();
+  const lista=auditStore.filter(a=>(!ft||a.tabela===ft)&&(!q||(a.quem+' '+a.registro+' '+a.tabela).toLowerCase().includes(q)));
+  $('audQtd').textContent=lista.length;
+  $('audIns').textContent=lista.filter(a=>a.operacao==='I').length;
+  $('audUpd').textContent=lista.filter(a=>a.operacao==='U').length;
+  $('audDel').textContent=lista.filter(a=>a.operacao==='D').length;
+  tb.innerHTML=lista.map(a=>{
+    const dt=new Date(a.quando).toLocaleString('pt-BR');
+    const mud=a.mudancas&&a.mudancas.length
+      ? a.mudancas.map(m=>`<div style="font-size:12px;padding:1px 0"><b>${m.campo}:</b> <span class="muted" style="text-decoration:line-through">${m.de}</span> → <b style="color:var(--brand)">${m.para}</b></div>`).join('')
+      : '<span class="muted">—</span>';
+    return `<tr><td class="nowrap">${dt}</td><td>${a.quem}</td><td><b>${a.tabela}</b></td><td>${OP_LABEL[a.operacao]||a.operacao}</td><td>${a.registro||a.registroId}</td><td>${mud}</td></tr>`;
+  }).join('')||'<tr><td colspan="6" class="muted" style="padding:16px">Nenhum registro ainda. Altere um cadastro (fornecedor, tarifa, tipo, delegação, veículo) ou feche uma viagem para ver aqui.</td></tr>';
+}
+$('audTabela')&&($('audTabela').addEventListener('change',renderAuditoria));
+$('audBusca')&&($('audBusca').addEventListener('input',renderAuditoria));
+$('btnAudLimpar')&&($('btnAudLimpar').onclick=()=>confirmToast('Limpar todo o log de auditoria?',()=>{auditStore=[];saveAudit();renderAuditoria();toast('Log de auditoria limpo.','info');},{title:'Limpar auditoria',yes:'Limpar',type:'error'}));
+document.querySelector('[data-panel="pAuditoria"]')&&document.querySelector('[data-panel="pAuditoria"]').addEventListener('click',()=>setTimeout(renderAuditoria,20));
+
+renderCoopTable();
+selectPersona('admin'); // inicia em Interno
+</script>
+</body>
+</html>

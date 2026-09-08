@@ -1,0 +1,20 @@
+# Allowlist: ignora TUDO por padrão e libera só o protótipo.
+# Mantém fora do repositório: BACK/, FRONT/, docs/ (proposta/orçamento), MEMORY.md, CLAUDE.md.
+
+*
+
+# --- liberados ---
+!.gitignore
+!README.md
+
+!viagens-prototipo.html
+!logo.png
+!logo_white.png
+!logo-icon-white.png
+!loading.gif
+
+!data/
+!data/**
+
+!2.0/
+!2.0/**
